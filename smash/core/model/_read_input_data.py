@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import glob
 import os
+import random
 import re
 import warnings
 from typing import TYPE_CHECKING
@@ -20,78 +21,263 @@ if TYPE_CHECKING:
     from smash.fcore._mwd_input_data import Input_DataDT
     from smash.fcore._mwd_mesh import MeshDT
     from smash.fcore._mwd_setup import SetupDT
-    from smash.util._typing import FilePath, ListLike
+    from smash.util._typing import FilePath
 
 
-# ~ def _get_date_regex_pattern(dt: float, daily_interannual: bool) -> str:
-# ~ if daily_interannual:
-# ~ # % Match %m%d
-# ~ pattern = 2 * r"\d{2}"
+# Must be done char by char to take account of various format. Must be documented.
+# Can't support all date formatter.
+# Avantage: can work even file are not sorted with the date.
+def _build_date_regex_pattern(date_pattern) -> str:
+    # Supported date formatters
+    datefmt = {"%Y": 4, "%m": 2, "%d": 2, "%H": 2, "%M": 2, "%S": 2}
 
-# ~ else:
-# ~ # % Match %Y%m%d%H%M
-# ~ if dt < 86_400:
-# ~ pattern = r"\d{4}" + 4 * r"\d{2}"
-# ~ # % Match %Y%m%d
-# ~ elif dt == 86_400:
-# ~ pattern = r"\d{4}" + 2 * r"\d{2}"
-# ~ # % Should be unreachable
-# ~ else:
-# ~ pass
+    regex = ""
+    i = 0
+    while i < len(date_pattern):
+        if date_pattern[i : i + 2] in datefmt:
+            regex += r"\d{" + str(datefmt[date_pattern[i : i + 2]]) + "}"
+            i = i + 2
+        else:
+            regex += r"\\" + date_pattern[i]
+            i = i + 1
 
-# ~ return pattern
-
-# def _split_date_occurence(date_pattern) -> str:
-#     re_match=re.search("\%[0-9]+$",date_pattern)
-#     if re_match is not None:
-#         pattern=date_pattern[0:int(re_match.span()[0])]
-#         occurence=int(re_match.group()[1])
-#         return pattern,occurence
-#     else :
-#         return date_pattern,0
-
-# def _get_date_regex_pattern(date_pattern) -> str:
-
-#     datefmt={"%Y":4,"%m":2,"%d":2,"%H":2,"%M":2}
-
-#     pattern=""
-#     for i in range(0,len(date_pattern),2):
-#         if date_pattern[i:i+2] in datefmt:
-#             pattern+=r"\d{"+str(datefmt[date_pattern[i:i+2]])+"}"
-
-#     return pattern
+    return regex
 
 
-# TODO : A priori cette fonciton ne sert a rien puisque l'on suppose les fichiers triés et que,
-# sur ce principe, les fichiers antérieurs sont supprimés de la liste.
-def _find_index_files_containing_date(
-    files: ListLike, date: pd.Timestamp, dt: float, date_pattern: str
-) -> int:
-    ind = -1
+def _split_date_occurence(date_pattern) -> str:
+    re_match = re.search(r"\%[0-9]+$", date_pattern)
+    if re_match is not None:
+        pattern = date_pattern[0 : int(re_match.span()[0])]
+        occurence = int(re_match.group()[1])
+        return pattern, occurence
+    else:
+        return date_pattern, 0
 
-    date_string = date.strftime(date_pattern)
 
-    for i, f in enumerate(files):
-        re_match = re.findall(date_string, os.path.basename(f))
+def sample_delta_time_in_file(files, date_pattern):
+    d_pattern, occurence = _split_date_occurence(date_pattern)
+    regex_date = _build_date_regex_pattern(d_pattern)
 
-        if len(re_match) > 0:
-            ind = i
+    arr_index = np.zeros(shape=(20, 2))
+    for i in range(20):
+        arr_index[i, 0] = random.randrange(0, len(files) - 1)
+        arr_index[i, 1] = arr_index[i, 0] + 1
+
+    arr_delta_time = np.zeros(shape=20)
+    for i in range(20):
+        re_match_0 = re.findall(regex_date, os.path.basename(files[int(arr_index[i, 0])]))
+        re_match_1 = re.findall(regex_date, os.path.basename(files[int(arr_index[i, 1])]))
+
+        if len(re_match_0) > 0 and len(re_match_1) > 0:
+            date_match_0 = pd.to_datetime(re_match_0[occurence], format=d_pattern)
+            date_match_1 = pd.to_datetime(re_match_1[occurence], format=d_pattern)
+            delta_time = date_match_1 - date_match_0
+            arr_delta_time[i] = delta_time.seconds
+
+    return arr_delta_time
+
+
+# TODO recherche de date start
+# return the first position after oe equal at date in files
+def fast_index_search_for_date(files, date, date_pattern):
+    # print("search for",date)
+    d_pattern, occurence = _split_date_occurence(date_pattern)
+    regex_date = _build_date_regex_pattern(d_pattern)
+
+    re_match = re.findall(regex_date, os.path.basename(files[-1]))
+    if len(re_match) > 0:
+        date_match = pd.to_datetime(re_match[occurence], format=d_pattern)
+
+        # cas1
+        if date > date_match:
+            return -1
+
+    else:
+        raise ValueError(
+            f"Date formatter {d_pattern} corresponding to regex {regex_date}"
+            " not found in filename {os.path.basename(files[i])}"
+        )
+
+    re_match = re.findall(regex_date, os.path.basename(files[0]))
+    if len(re_match) > 0:
+        date_match = pd.to_datetime(re_match[occurence], format=d_pattern)
+
+        # cas2
+        if date < date_match:
+            return 0
+
+    else:
+        raise ValueError(
+            f"Date formatter {d_pattern} corresponding to regex {regex_date}"
+            " not found in filename {os.path.basename(files[i])}"
+        )
+
+    # cas3
+    pos = 0
+    final_pos = 0
+    move = 1
+    previous_move = 0
+    step = len(files) - 1
+    nb_iter = 0
+    while nb_iter < 100:
+        re_match = re.findall(regex_date, os.path.basename(files[pos]))
+        date_match = pd.to_datetime(re_match[occurence], format=d_pattern)
+
+        # print(
+        #             "At iteration "
+        #             + str(nb_iter)
+        #             +f" searching {date},"
+        #             + "and match "
+        #             + date_match.strftime("%Y-%m-%d %H:%M:%S")
+        #             + f" at pos {pos}"
+        #         )
+
+        if date_match < date:
+            pos = min(pos + step, len(files) - 1)
+            move = 1
+        elif date_match > date:
+            pos = max(pos - step, 0)
+            move = -1
+        elif date_match == date:
+            final_pos = pos
             break
+
+        if step == 0:
+            if date_match < date:
+                final_pos = pos + 1
+                break
+            elif date_match > date:
+                final_pos = pos
+                break
+
+        # print(f"-> Move to pos {pos} with step {step}")
+
+        # reduce step only if we change search direction
+        if previous_move != move:
+            step = int(step / 2)
+
+        nb_iter = nb_iter + 1
+        previous_move = move
+
+    # print(
+    #             "At last iteration "
+    #             + str(nb_iter)
+    #             +f" searching {date},"
+    #             + "and match "
+    #             + date_match.strftime("%Y-%m-%d %H:%M:%S")
+    #             + f" at pos {pos}"
+    #         )
+
+    # iter>maxlimit:
+    if date_match < date:
+        final_pos = pos
+    elif date_match > date:
+        # back to previous pos
+        final_pos = pos - 2 * step
+
+    return final_pos
+
+
+# Getting dates for all files
+def get_files_list_for_date_range(files, date_pattern, date_range):
+    d_pattern, occurence = _split_date_occurence(date_pattern)
+    regex_date = _build_date_regex_pattern(d_pattern)
+
+    vec_date = []
+    for i, f in enumerate(files):
+        re_match = re.findall(regex_date, os.path.basename(f))
+        # print(re_match, regex_date,os.path.basename(f))
+        if len(re_match) > 0:
+            date = pd.to_datetime(re_match[occurence], format=d_pattern)
+            vec_date.append(date.strftime("%Y%m%d%H%M%S"))
+
+            if date >= date_range[-1]:
+                break
+
+        else:
+            raise ValueError(
+                f"Date formatter {d_pattern} corresponding to regex {regex_date}"
+                " not found in filename {os.path.basename(f)}"
+            )
+
+    # convert to numpy array
+    np_lst_date = np.array(vec_date)
+    np_lst_files = np.array(files)
+    np_date_range = np.array(date_range.strftime("%Y%m%d%H%M%S").to_list())
+    # sort but keep indexes
+    sorted_indices = np_lst_date.argsort()
+    # sort according previous indexes
+    np_lst_date_sorted = np_lst_date[sorted_indices]
+
+    # build the list of index only for the daterange
+    index_list_for_daterange = []
+    for i in range(len(np_date_range)):
+        pos = np.where(np_lst_date_sorted == np_date_range[i])
+        if len(pos[0]) > 0:
+            index_list_for_daterange.append(pos[0][0])
+        else:
+            index_list_for_daterange.append(-1)
+
+    # find the final list of files for daterange (sorted)
+    final_list_files = []
+    for index in index_list_for_daterange:
+        if index >= 0:
+            final_list_files.append(np_lst_files[sorted_indices[index]])
+        else:
+            final_list_files.append(-1)
+
+    return final_list_files
+
+
+# def _find_index_files_containing_date(
+#     files: ListLike, date: pd.Timestamp, date_pattern) -> int:
+#     ind = -1
+#     regex_pattern = _get_date_regex_pattern(dt, daily_interannual)
+#     for i, f in enumerate(files):
+#         re_match = re.search(regex_pattern, os.path.basename(f))
+#         if daily_interannual:
+#             fdate = pd.Timestamp(f"{date.year}{re_match.group()}")
+#         else:
+#             fdate = pd.Timestamp(re_match.group())
+#         if fdate < date:
+#             continue
+#         elif fdate == date:
+#             ind = i
+#         elif fdate > date:
+#             break
+#     return ind
+
+
+# We suppose that the atmos file are sorted in ascendent order with the date
+# (this a drawback of the method) ! Must be documented !
+# Only used for daily internanuel pet
+def _check_files_containing_date(files: str, date: pd.Timestamp, date_pattern: str) -> int:
+    date_string = date.strftime(date_pattern)
+    ind = -1
+    for i, f in enumerate(files):
+        # print(i,date_string,os.path.basename(f))
+        if date_string in os.path.basename(f):
+            ind = i
 
     return ind
 
 
+# We suppose that the atmos file are sorted in ascendent order with the date
+# (this a drawback of the method) ! Must be documented !
 def _get_atmos_files(
     dir: str,
     fmt: str,
     access: str,
+    dt: float,
     date_range: pd.DatetimeIndex,
-    prcp_date_pattern: str,
+    date_pattern: str,
     daily_interannual: bool = False,
 ) -> list[str]:
     # Set to drop duplicates after strftime
+
     date_range_strftime_access = set(date_range.strftime(access)) if access else {""}
     files = []
+
     for date_strftime_access in date_range_strftime_access:
         files.extend(glob.glob(f"{dir}/{date_strftime_access}/**/*{fmt}", recursive=True))
 
@@ -102,14 +288,35 @@ def _get_atmos_files(
         return files
 
     else:
-        # % Adjust list by removing files that are ealier than start_time and greater than end_time
-        date_string = date_range[0].strftime(prcp_date_pattern)
+        # Check if file are sorted with the date pattern
+        arr_delta_time = sample_delta_time_in_file(files, date_pattern)
 
-        for i, f in enumerate(files):
-            re_match = re.findall(date_string, os.path.basename(f))
+        # if sorted we quickly search index of date_start and date_end
+        # if not sorted we parse all files et keep the dates
+        if np.all(arr_delta_time > 0):
+            # file seems sorted
+            pos_0 = fast_index_search_for_date(files, date_range[0], date_pattern)
+            pos_1 = fast_index_search_for_date(files, date_range[-1], date_pattern)
 
-            if len(re_match) > 0:
-                return files[i:]
+            files = files[pos_0 : pos_1 + 1]
+            # if sorted check if good dt (at least one ! (possible lacuna))
+            if np.min(arr_delta_time) != dt:
+                # sorted but not good time-step
+                raise ValueError(
+                    "Precipitation files are sorted with the date pattern but not at the good time-step:"
+                    " prcp time-step={arr_delta_time[0]}, model time-step={dt}"
+                )
+        else:
+            # not sorted
+            print(
+                "Warnings, precipitation filename are not sorted with date."
+                " Reading precipitation may take more time."
+            )
+
+        # we build the file list according the date_range (sorted): we have 1 date <=>  1file
+        final_list_files = get_files_list_for_date_range(files, date_pattern, date_range)
+
+        return final_list_files
 
     # % Return an empty list in case we did not return ealier. It means that we do not have files
     # % that match the time period. It will return a missing warning in the corresponding read atmos function.
@@ -288,8 +495,8 @@ def _read_qobs(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
         warnings.warn(f"Missing {len(miss)} observed discharge file(s): {miss}", stacklevel=2)
 
 
-# TODO: Refactorize each read atmos
-def _read_prcp(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
+# TODO: Unique fun to read prcp, snow and temp
+def _read_common_data(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT, atmos_data="prcp"):
     date_range = pd.date_range(
         start=setup.start_time,
         end=setup.end_time,
@@ -298,65 +505,85 @@ def _read_prcp(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
 
     reading_warning = {"got": [], "miss": [], "res": 0, "overlap": 0, "outofbound": 0}
 
-    if setup.prcp_format == "tif":
+    atmos_data_directory = getattr(setup, f"{atmos_data}_directory")
+    atmos_data_format = getattr(setup, f"{atmos_data}_format")
+    atmos_date_pattern = getattr(setup, f"{atmos_data}_date_pattern")
+    prcp_access = getattr(setup, "prcp_access")
+    prcp_conversion_factor = getattr(setup, "prcp_conversion_factor")
+    sparse_storage = getattr(setup, "sparse_storage")
+    dt = getattr(setup, "dt")
+
+    sparse_matrix = None
+    std_storage = None
+    if sparse_storage:
+        sparse_matrix = getattr(input_data.atmos_data, f"sparse_{atmos_data}")
+    else:
+        std_storage = getattr(input_data.atmos_data, f"{atmos_data}")
+
+    if atmos_data_format == "tif":
         files = _get_atmos_files(
-            setup.prcp_directory, setup.prcp_format, setup.prcp_access, date_range, setup.prcp_date_pattern
+            atmos_data_directory, atmos_data_format, prcp_access, dt, date_range, atmos_date_pattern
         )
 
-        for i, date in enumerate(tqdm(date_range, desc="</> Reading precipitation")):
-            ind = _find_index_files_containing_date(files, date, setup.dt, setup.prcp_date_pattern)
+        for i, date in enumerate(tqdm(date_range, desc=f"</> Reading {atmos_data}")):
+            atmos_file = files[i]
 
-            if ind == -1:
+            if atmos_file == -1:
                 reading_warning["miss"].append(
                     date.strftime("%Y-%m-%d %H:%M")
-                    + f", (matching pattern {date.strftime(setup.prcp_date_pattern)})"
+                    + f", (matching pattern {date.strftime(atmos_date_pattern)})"
                 )
-                if setup.sparse_storage:
+                if sparse_storage:
                     matrix = np.zeros(shape=(mesh.nrow, mesh.ncol), dtype=np.float32, order="F")
                     matrix.fill(np.float32(-99))
                     wrap_matrix_to_sparse_matrix(
                         mesh,
                         matrix,
                         np.float32(-99),
-                        input_data.atmos_data.sparse_prcp[i],
+                        sparse_matrix[i],
                     )
 
                 else:
-                    input_data.atmos_data.prcp[..., i] = np.float32(-99)
+                    std_storage[..., i] = np.float32(-99)
 
             else:
                 reading_warning["got"].append(
-                    date.strftime("%Y-%m-%d %H:%M") + f" ({os.path.basename(files[ind])})"
+                    date.strftime("%Y-%m-%d %H:%M") + f" ({os.path.basename(atmos_file)})"
                 )
 
-                matrix, warning = _read_windowed_raster(files[ind], mesh)
-                matrix *= setup.prcp_conversion_factor
+                matrix, warning = _read_windowed_raster(atmos_file, mesh)
+                matrix *= prcp_conversion_factor
                 reading_warning.update({k: v for k, v in warning.items() if not reading_warning[k]})
 
-                if setup.sparse_storage:
+                if sparse_storage:
                     wrap_matrix_to_sparse_matrix(
                         mesh,
                         matrix,
                         np.float32(0),
-                        input_data.atmos_data.sparse_prcp[i],
+                        sparse_matrix[i],
                     )
 
                 else:
-                    input_data.atmos_data.prcp[..., i] = matrix
+                    std_storage[..., i] = matrix
 
-                files = files[ind + 1 :]
+                # files = files[1:]
+
+            if sparse_matrix:
+                setattr(input_data.atmos_data, f"sparse_{atmos_data}", sparse_matrix)
+            else:
+                setattr(input_data.atmos_data, f"{atmos_data}", std_storage)
 
     # % WIP
-    elif setup.prcp_format == "nc":
+    elif atmos_data_format == "nc":
         raise NotImplementedError("NetCDF format not implemented yet")
 
     msg = _get_reading_warning_message(reading_warning)
 
     if msg:
-        warnings.warn(f"Warning(s) linked to precipitation reading.\n{msg}", stacklevel=2)
+        warnings.warn(f"Warning(s) linked to {atmos_data} reading.\n{msg}", stacklevel=2)
 
 
-def _read_pet(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
+def _read_interannual_pet(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
     date_range = pd.date_range(
         start=setup.start_time,
         end=setup.end_time,
@@ -364,13 +591,13 @@ def _read_pet(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
     )[1:]
 
     reading_warning = {"got": [], "miss": [], "res": 0, "overlap": 0, "outofbound": 0}
-    # date_pattern,occurence=_split_date_occurence(setup.pet_date_pattern)
 
     if setup.pet_format == "tif":
         files = _get_atmos_files(
             setup.pet_directory,
             setup.pet_format,
             setup.pet_access,
+            setup.dt,
             date_range,
             setup.prcp_date_pattern,
             setup.daily_interannual_pet,
@@ -396,12 +623,14 @@ def _read_pet(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
 
             for i, date in enumerate(tqdm(leap_year_days, desc="</> Reading daily interannual pet")):
                 if list_date_in_leap_year_days[i] in list_date_in_daterange:
-                    ind = _find_index_files_containing_date(files, date, setup.dt, "%m%d")
+                    ind = _check_files_containing_date(files, date, "%m%d")
 
                     if ind == -1:
-                        reading_warning["miss"].append(date + f", (matching pattern {date.strftime('%m%d')})")
+                        reading_warning["miss"].append(
+                            date_range[i].strftime("%Y-%m-%d")
+                            + f", (matching pattern {date.strftime('%m%d')})"
+                        )
                         missing_day = np.append(missing_day, date)
-
                     else:
                         reading_warning["got"].append(
                             date.strftime("%Y-%m-%d") + f" ({os.path.basename(files[ind])})"
@@ -409,8 +638,6 @@ def _read_pet(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
                         matrix_dip[..., i], warning = _read_windowed_raster(files[ind], mesh)
                         matrix_dip[..., i] *= setup.pet_conversion_factor
                         reading_warning.update({k: v for k, v in warning.items() if not reading_warning[k]})
-
-                        files = files[ind + 1 :]
 
             for i, date in enumerate(tqdm(date_range, desc="</> Disaggregating daily interannual pet")):
                 ratio_ind = (i + step_offset) % nstep_per_day
@@ -440,50 +667,6 @@ def _read_pet(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
                         )
                     else:
                         input_data.atmos_data.pet[..., i] = matrix
-
-        else:
-            for i, date in enumerate(tqdm(date_range, desc="</> Reading pet")):
-                ind = _find_index_files_containing_date(files, date, setup.dt, setup.pet_date_pattern)
-
-                if ind == -1:
-                    reading_warning["miss"].append(
-                        date.strftime("%Y-%m-%d %H:%M")
-                        + f", (matching pattern {date.strftime(setup.pet_date_pattern)})"
-                    )
-                    if setup.sparse_storage:
-                        matrix = np.zeros(shape=(mesh.nrow, mesh.ncol), dtype=np.float32, order="F")
-                        matrix.fill(np.float32(-99))
-                        wrap_matrix_to_sparse_matrix(
-                            mesh,
-                            matrix,
-                            np.float32(-99),
-                            input_data.atmos_data.sparse_pet[i],
-                        )
-
-                    else:
-                        input_data.atmos_data.pet[..., i] = np.float32(-99)
-
-                else:
-                    reading_warning["got"].append(
-                        date.strftime("%Y-%m-%d %H:%M") + f" ({os.path.basename(files[ind])})"
-                    )
-                    matrix, warning = _read_windowed_raster(files[ind], mesh)
-                    matrix *= setup.pet_conversion_factor
-                    reading_warning.update({k: v for k, v in warning.items() if not reading_warning[k]})
-
-                    if setup.sparse_storage:
-                        wrap_matrix_to_sparse_matrix(
-                            mesh,
-                            matrix,
-                            np.float32(0),
-                            input_data.atmos_data.sparse_pet[i],
-                        )
-
-                    else:
-                        input_data.atmos_data.pet[..., i] = matrix
-
-                    files = files[ind + 1 :]
-
     # % WIP
     elif setup.pet_format == "nc":
         raise NotImplementedError("NetCDF format not implemented yet")
@@ -494,142 +677,8 @@ def _read_pet(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
         warnings.warn(f"Warning(s) linked to potential evapotranspiration reading.\n{msg}", stacklevel=2)
 
 
-def _read_snow(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
-    date_range = pd.date_range(
-        start=setup.start_time,
-        end=setup.end_time,
-        freq=f"{int(setup.dt)}s",
-    )[1:]
-
-    reading_warning = {"got": [], "miss": [], "res": 0, "overlap": 0, "outofbound": 0}
-    # date_pattern,occurence=_split_date_occurence(setup.snow_date_pattern)
-
-    if setup.snow_format == "tif":
-        files = _get_atmos_files(
-            setup.snow_directory, setup.snow_format, setup.snow_access, date_range, setup.prcp_date_pattern
-        )
-
-        for i, date in enumerate(tqdm(date_range, desc="</> Reading snow")):
-            ind = _find_index_files_containing_date(files, date, setup.dt, setup.snow_date_pattern)
-
-            if ind == -1:
-                reading_warning["miss"].append(
-                    date.strftime("%Y-%m-%d %H:%M")
-                    + f",(matching pattern {date.strftime(setup.snow_date_pattern)})"
-                )
-                if setup.sparse_storage:
-                    matrix = np.zeros(shape=(mesh.nrow, mesh.ncol), dtype=np.float32, order="F")
-                    matrix.fill(np.float32(-99))
-                    wrap_matrix_to_sparse_matrix(
-                        mesh,
-                        matrix,
-                        np.float32(-99),
-                        input_data.atmos_data.sparse_snow[i],
-                    )
-
-                else:
-                    input_data.atmos_data.snow[..., i] = np.float32(-99)
-
-            else:
-                reading_warning["got"].append(
-                    date.strftime("%Y-%m-%d %H:%M") + f" ({os.path.basename(files[ind])})"
-                )
-                matrix, warning = _read_windowed_raster(files[ind], mesh)
-                matrix *= setup.snow_conversion_factor
-                reading_warning.update({k: v for k, v in warning.items() if not reading_warning[k]})
-
-                if setup.sparse_storage:
-                    wrap_matrix_to_sparse_matrix(
-                        mesh,
-                        matrix,
-                        np.float32(0),
-                        input_data.atmos_data.sparse_snow[i],
-                    )
-
-                else:
-                    input_data.atmos_data.snow[..., i] = matrix
-
-                files = files[ind + 1 :]
-
-    # % WIP
-    elif setup.snow_format == "nc":
-        raise NotImplementedError("NetCDF format not implemented yet")
-
-    msg = _get_reading_warning_message(reading_warning)
-
-    if msg:
-        warnings.warn(f"Warning(s) linked to snow reading.\n{msg}", stacklevel=2)
-
-
-def _read_temp(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
-    date_range = pd.date_range(
-        start=setup.start_time,
-        end=setup.end_time,
-        freq=f"{int(setup.dt)}s",
-    )[1:]
-
-    reading_warning = {"got": [], "miss": [], "res": 0, "overlap": 0, "outofbound": 0}
-    # date_pattern,occurence=_split_date_occurence(setup.temp_date_pattern)
-
-    if setup.temp_format == "tif":
-        files = _get_atmos_files(
-            setup.temp_directory, setup.temp_format, setup.temp_access, date_range, setup.prcp_access
-        )
-
-        for i, date in enumerate(tqdm(date_range, desc="</> Reading temperature")):
-            ind = _find_index_files_containing_date(files, date, setup.dt, setup.temp_date_pattern)
-
-            if ind == -1:
-                reading_warning["miss"].append(
-                    date.strftime("%Y-%m-%d %H:%M")
-                    + f",(matching pattern {date.strftime(setup.temp_date_pattern)})"
-                )
-                if setup.sparse_storage:
-                    matrix = np.zeros(shape=(mesh.nrow, mesh.ncol), dtype=np.float32, order="F")
-                    # We can assume that -99 is too cold
-                    matrix.fill(np.float32(-99))
-                    wrap_matrix_to_sparse_matrix(
-                        mesh,
-                        matrix,
-                        np.float32(-99),
-                        input_data.atmos_data.sparse_temp[i],
-                    )
-
-                else:
-                    input_data.atmos_data.temp[..., i] = np.float32(-99)
-
-            else:
-                reading_warning["got"].append(
-                    date.strftime("%Y-%m-%d %H:%M") + f" ({os.path.basename(files[ind])})"
-                )
-                matrix, warning = _read_windowed_raster(files[ind], mesh)
-                reading_warning.update({k: v for k, v in warning.items() if not reading_warning[k]})
-
-                if setup.sparse_storage:
-                    wrap_matrix_to_sparse_matrix(
-                        mesh,
-                        matrix,
-                        np.float32(0),
-                        input_data.atmos_data.sparse_temp[i],
-                    )
-
-                else:
-                    input_data.atmos_data.temp[..., i] = matrix
-
-                files = files[ind + 1 :]
-
-    # % WIP
-    elif setup.temp_format == "nc":
-        raise NotImplementedError("NetCDF format not implemented yet")
-
-    msg = _get_reading_warning_message(reading_warning)
-
-    if msg:
-        warnings.warn(f"Warning(s) linked to temperature reading.\n{msg}", stacklevel=2)
-
-
 def _read_descriptor(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
-    reading_warning = {"miss": [], "res": 0, "overlap": 0, "outofbound": 0}
+    reading_warning = {"got": [], "miss": [], "res": 0, "overlap": 0, "outofbound": 0}
     for i, name in enumerate(setup.descriptor_name):
         path = glob.glob(
             f"{setup.descriptor_directory}/**/{name}.tif*",
