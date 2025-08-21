@@ -682,8 +682,4 @@ def _generate_mesh(
     if bbox is not None and x is None:
         return _generate_mesh_from_bbox(flwdir_dataset, bbox, epsg)
     else:
-<<<<<<< HEAD
-        return _generate_mesh_from_xy(flwdir_dataset, bbox, x, y, area, code, shp_dataset, max_depth, epsg)
-=======
         return _generate_mesh_from_xy(flwdir_dataset, x, y, area, code, shp_dataset, max_depth, epsg, area_error_th)
->>>>>>> exclude_mesh_outlets_based_on_surface_error
