@@ -322,25 +322,8 @@ def _standardize_generate_mesh_args(
 
     epsg = _standardize_generate_mesh_epsg(epsg)
 
-<<<<<<< HEAD
     area_error_th = _standardize_generate_mesh_area_error_th(
         area_error_th
     )
 
     return flwdir_dataset, bbox, x, y, area, code, shp_dataset, max_depth, epsg, area_error_th
-=======
-    area_error_th = _standardize_generate_mesh_area_error_th(area_error_th)
-
-    return (
-        flwdir_dataset,
-        bbox,
-        x,
-        y,
-        area,
-        code,
-        shp_dataset,
-        max_depth,
-        epsg,
-        area_error_th,
-    )
->>>>>>> fix_bug_size_mesh_with_bbox
