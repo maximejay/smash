@@ -69,10 +69,12 @@ def test_bbox_padding():
     bbox = (670_000, 770_000, 6_600_000, 6_700_000)
     bbox_loff = (670_100, 770_100, 6_600_100, 6_700_100)
     bbox_roff = (670_900, 770_900, 6_600_900, 6_700_900)
+    bbox_coff = (670_500, 770_500, 6_600_500, 6_700_500)
 
     mesh = smash.factory.generate_mesh(flwdir, bbox=bbox, epsg=2154)
     mesh_loff = smash.factory.generate_mesh(flwdir, bbox=bbox_loff, epsg=2154)
     mesh_roff = smash.factory.generate_mesh(flwdir, bbox=bbox_roff, epsg=2154)
+    mesh_coff = smash.factory.generate_mesh(flwdir, bbox=bbox_coff, epsg=2154)
 
     # % Check bounding box padding
     assert bbox[0] == mesh["xmin"], "overlap_read_data.nopad_xmin"
@@ -84,11 +86,17 @@ def test_bbox_padding():
     assert bbox_roff[0] != mesh_roff["xmin"], "overlap_read_data.uoffpad_xmin"
     assert bbox_roff[3] != mesh_roff["ymax"], "overlap_read_data.uoffpad_ymax"
 
+    assert bbox_coff[0] != mesh_coff["xmin"], "overlap_read_data.uoffpad_xmin"
+    assert bbox_coff[3] != mesh_coff["ymax"], "overlap_read_data.uoffpad_ymax"
+
     assert mesh_loff["xmin"] == mesh["xmin"], "overlap_read_data.loff_xmin_eq"
     assert mesh_loff["ymax"] == mesh["ymax"], "overlap_read_data.loff_ymax_eq"
 
     assert mesh_roff["xmin"] != mesh["xmin"], "overlap_read_data.uoff_xmin_neq"
     assert mesh_roff["ymax"] != mesh["ymax"], "overlap_read_data.uoff_ymax_neq"
+
+    assert mesh_coff["xmin"] != mesh["xmin"], "overlap_read_data.uoff_xmin_neq"
+    assert mesh_coff["ymax"] != mesh["ymax"], "overlap_read_data.uoff_ymax_neq"
 
 
 def test_detect_sink():
