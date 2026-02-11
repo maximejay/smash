@@ -154,6 +154,7 @@ def generate_mesh(
     max_depth: Numeric = 1,
     epsg: AlphaNumeric | None = None,
     area_error_th: Numeric | None = None,
+    active_cell_only: bool = True,
 ) -> dict[str, Any]:
     # % TODO FC: Add advanced user guide
     """
@@ -229,6 +230,10 @@ def generate_mesh(
         follows: :math:`error=(area_dln - area)/area`.
         For example, `area_error_th=0.2` means that all outlets where the surface error is higher than 20%
         will be excluded.
+
+    active_cell_only: bool, default True
+        Build mesh only for active cells, i.e cells upstream to a gauge.
+        If False, all cells are marked as active.
 
         .. note::
             If not given, the computation of the error on the area is ignored and all outlets are included
@@ -382,7 +387,17 @@ def generate_mesh(
     """
 
     args = _standardize_generate_mesh_args(
-        flwdir_path, bbox, x, y, area, code, shp_path, max_depth, epsg, area_error_th
+        flwdir_path,
+        bbox,
+        x,
+        y,
+        area,
+        code,
+        shp_path,
+        max_depth,
+        epsg,
+        area_error_th,
+        active_cell_only,
     )
 
     return _generate_mesh(*args)
@@ -399,6 +414,7 @@ def _generate_mesh_from_xy(
     max_depth: int,
     epsg: int,
     area_error_th: float | None,
+    active_cell_only: bool,
 ) -> dict:
     (xmin, _, xres, _, ymax, yres) = _get_transform(flwdir_dataset)
 
@@ -446,11 +462,19 @@ def _generate_mesh_from_xy(
 
         if shp_dataset is not None and code[ind] in shp_dataset["code"].values:
             transform = rasterio.transform.Affine(
-                xres, 0, xmin + slice_win[1].start * xres, 0, -yres, ymax - slice_win[0].start * yres
+                xres,
+                0,
+                xmin + slice_win[1].start * xres,
+                0,
+                -yres,
+                ymax - slice_win[0].start * yres,
             )
             geometry = shp_dataset.loc[shp_dataset["code"] == code[ind], "geometry"]
             mask = rasterio.features.rasterize(
-                [(geom, 1) for geom in geometry], out_shape=flwdir_win.shape, transform=transform, fill=0
+                [(geom, 1) for geom in geometry],
+                out_shape=flwdir_win.shape,
+                transform=transform,
+                fill=0,
             )
             mask_dln_win, row_dln_win, col_dln_win, sink_dln[ind] = mw_mesh.catchment_dln_contour_based(
                 flwdir_win, mask, row_win, col_win, max_depth
@@ -503,7 +527,10 @@ def _generate_mesh_from_xy(
                 mask_dln_win = 0
                 deleted_catchment.append(ind)
 
+    if active_cell_only:
         mask_dln[slice_win] = np.where(mask_dln_win == 1, 1, mask_dln[slice_win])
+    else:
+        mask_dln[:] = 1
 
     row_dln = np.delete(row_dln, deleted_catchment)
     col_dln = np.delete(col_dln, deleted_catchment)
@@ -678,10 +705,21 @@ def _generate_mesh(
     max_depth: int,
     epsg: int | None,
     area_error_th: float | None,
+    active_cell_only: bool,
 ) -> dict:
     if bbox is not None and x is None:
         return _generate_mesh_from_bbox(flwdir_dataset, bbox, epsg)
     else:
         return _generate_mesh_from_xy(
-            flwdir_dataset, bbox, x, y, area, code, shp_dataset, max_depth, epsg, area_error_th
+            flwdir_dataset,
+            bbox,
+            x,
+            y,
+            area,
+            code,
+            shp_dataset,
+            max_depth,
+            epsg,
+            area_error_th,
+            active_cell_only,
         )

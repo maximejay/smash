@@ -249,6 +249,15 @@ def _standardize_generate_mesh_area_error_th(
     return area_error_th
 
 
+def _standardize_generate_mesh_active_cell_only(
+    active_cell_only: bool,
+) -> bool:
+    if not isinstance(active_cell_only, bool):
+        raise TypeError("active_cell_only argument must be of boolean True|False")
+
+    return active_cell_only
+
+
 def _standardize_generate_mesh_args(
     flwdir_path: FilePath,
     bbox: ListLike | None,
@@ -260,6 +269,7 @@ def _standardize_generate_mesh_args(
     max_depth: Numeric,
     epsg: AlphaNumeric | None,
     area_error_th: Numeric | None,
+    active_cell_only: bool,
 ) -> AnyTuple:
     flwdir_path = _standardize_generate_mesh_flwdir_path(flwdir_path)
 
@@ -286,6 +296,8 @@ def _standardize_generate_mesh_args(
 
     area_error_th = _standardize_generate_mesh_area_error_th(area_error_th)
 
+    active_cell_only = _standardize_generate_mesh_active_cell_only(active_cell_only)
+
     return (
         flwdir_dataset,
         bbox,
@@ -297,4 +309,5 @@ def _standardize_generate_mesh_args(
         max_depth,
         epsg,
         area_error_th,
+        active_cell_only,
     )
