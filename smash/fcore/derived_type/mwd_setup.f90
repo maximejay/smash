@@ -73,6 +73,7 @@
 module mwd_setup
 
     use md_constant !% only: sp, lchar
+    use mwd_discontinuities
 
     implicit none
 
@@ -157,9 +158,11 @@ module mwd_setup
         integer :: n_layers = -99
         integer, dimension(2) :: hidden_neuron = -99
         integer, dimension(4) :: neurons = -99
+        
+        type(discontinuitiesDT), dimension(:), allocatable :: hydraulics_discontinuities
 
     end type SetupDT
-
+    
 contains
 
     subroutine SetupDT_initialise(this, nd)

@@ -17,6 +17,7 @@ module md_routing_operator
     use mwd_mesh !% only: MeshDT
     use mwd_options !% only: OptionsDT
     use mwd_returns !% only: ReturnsDT
+    use mwd_discontinuities
 
     implicit none
 
@@ -243,7 +244,7 @@ contains
         real(sp), dimension(mesh%nac, setup%nqz), intent(inout) :: ac_qz
 
         integer :: i, j, row, col, k, time_step_returns
-        real(sp) :: qup
+        real(sp) :: qup, qr, hdams
 
         ac_qz(:, setup%nqz) = ac_qtz(:, setup%nqz)
 
@@ -269,8 +270,18 @@ contains
                     call upstream_discharge(mesh, row, col, ac_qz(:, setup%nqz), qup)
 
                     call linear_routing(mesh%dx(row, col), mesh%dy(row, col), setup%dt, mesh%flwacc(row, col), &
-                    & ac_llr(k), ac_hlr(k), qup, ac_qz(k, setup%nqz))
-
+                    & ac_llr(k), ac_hlr(k), qup, qr)
+                    
+                    !setup%hydraulics_discontinuities will be only a list of discontinuities
+                    !mesh%hydraulics_discontinuities will be a array of size nac, where discontinuity_type="zeros" except if discontinuity listed in setup
+                    !duplicate the setup%hydraulics_discontinuities in the mesh but with size of nac
+                    !need a states variable (h cote du barrage) to be passed to LAMINAGE
+                    if (setup%hydraulics_discontinuities(k)%discontinuity_type .eq. "dams") then
+                        call LAMINAGE(setup%dt, setup%hydraulics_discontinuities(k)%dams, qr, hdams, ac_qz(k, setup%nqz))
+                    else
+                        ac_qz(k, setup%nqz)=qr
+                    end if
+                    
                     !$AD start-exclude
                     !internal fluxes
                     if (returns%internal_fluxes_flag) then
@@ -448,5 +459,159 @@ contains
         end do
 
     end subroutine kw_time_step
+    
+        !*************************************************************************
+    !      PROCEDURE DE LAMINAGE
+    !      npdt = nombre de pas de temps de la chronique de débit entrant
+    !      dt = pas de temps de la chronique de débit entrant (secondes)
+    !      n_HV = nombre de points de la relation hauteur/volume (m - Mm3)
+    !      n_HQ = nombre de points de la relation hauteur/débit (m - m3/s)
+    !      rel_HV = relation hauteur/volume
+    !      rel_HQ = relation hauteur/débit
+    !      x1 = debit entrant (m3/s)
+    !      x2 = cote du plan d'eau (m)
+    !      x3 = debit sortant (m3/s)
+    !*************************************************************************
+    SUBROUTINE LAMINAGE(dt, dams, x1, x2, x3)
+
+        implicit none
+
+        real, intent(in)    :: dt
+        type(damsDT), intent(in) :: dams
+        
+        real, intent(out)    :: x1, x2, x3
+        
+        !~         double precision, dimension(2,n_HV), intent(in)    :: rel_HV
+!~         double precision, dimension(2,n_HQ), intent(in)    :: rel_HQ
+        integer :: i, n_HV,n_HQ
+        real Zini, Z, Qbid, VOLout, VOLin, VOLt, zoutmax, qoutmoy
+        logical :: dt_min
+!~         rel_HV=dams%rel_HV
+!~         rel_HQ=dams%rel_HQ
+        
+        !.... initialisation
+        Zini = 0. ! initialisation a la premier valeur du fichier H_V (equivalent au barrage vide)
+        VOLt = 0.
+
+        n_HV=size(dams%rel_HV)
+        n_HQ=size(dams%rel_HQ)
+        
+        x2 = Zini
+        
+        dt_min=.TRUE.
+        
+        if (dt_min .eqv. .TRUE.) then
+        
+           qoutmoy = 0.
+           zoutmax = -999.
+           DO i=1,int(dt/60.)             ! boucle sur les pas de temps en minutes
+!~              VOLin = (x1(i) + (j-1)/(dt/60.)*(x1(i+1)-x1(i))) * 60. / 1000000.  ! Transformation des m3/s en Mm3 par min
+                VOLin = x1/int(dt/60.) * 60. / 1000000.  ! Transformation des m3/s en Mm3 par min
+                VOLt = VOLt + VOLin
+                
+                CALL V_to_H(n_HV, dams%rel_HV, VOLt, Z)
+                CALL H_to_Q(n_HQ, dams%rel_HQ, Z, Qbid)
+                
+                VOLout = Qbid / 1000000. * 60.
+                VOLt = VOLt - VOLout
+                
+                CALL V_to_H(n_HV, dams%rel_HV, VOLt, Z)
+                
+                qoutmoy = qoutmoy + Qbid
+                
+                IF (Z.GT.zoutmax) zoutmax = Z
+                
+            ENDDO ! fin de la boucle sur l'heure
+           x2 = zoutmax
+           x3 = qoutmoy/(dt/60.)
+           
+        else ! on n'est pas dans un evenement pluvieux donc on reste au pas de temps horaire
+        
+           VOLin = x1 / 1000000. * dt ! Transformation des m3/s de l'hydrogramme en Mm3 par pas de temps
+           VOLt = VOLt + VOLin
+           
+           CALL V_to_H(n_HV, dams%rel_HV, VOLt, Z)
+           CALL H_to_Q(n_HQ, dams%rel_HQ, Z, Qbid)
+           
+           VOLout= Qbid / 1000000. * dt
+           VOLt = VOLt - VOLout
+           
+           CALL V_to_H(n_HV, dams%rel_HV, VOLt, Z)
+           
+           x2 = Z
+           x3 = Qbid
+           
+        endif
+
+        Zini = x2 
+        
+        contains
+        
+        SUBROUTINE V_to_H(nv, rel_HV, volume, hauteur)
+
+            IMPLICIT none
+
+            integer, intent(in) :: nv
+            real, intent(in)  :: volume
+            real, intent(out) :: hauteur
+            real, dimension(2,nv) :: rel_HV
+            integer :: ii
+
+            !.... rel_HV(1,) == Hauteur et rel_HV(2,) == Volume      
+            DO ii = 1,nV-1
+            IF ((volume.GE.rel_HV(2,ii)).AND.(volume.LE.rel_HV(2,ii+1))) THEN
+                hauteur = rel_HV(1,ii) + (volume-rel_HV(2,ii))*(rel_HV(1,ii+1)-rel_HV(1,ii))/(rel_HV(2,ii+1)-rel_HV(2,ii))
+                exit
+             ENDIF
+            ENDDO
+
+        END SUBROUTINE V_to_H
+          
+        !**************************************************************************
+        !.....Calcul de V(Mm3) pour un H(m) donné
+        !**************************************************************************
+        SUBROUTINE H_to_V(nv, rel_HV, hauteur,volume)
+
+            IMPLICIT none
+
+            integer, intent(in) :: nv
+            real, intent(in)  :: hauteur
+            real, intent(out) :: volume
+            real, dimension(2,nv) :: rel_HV
+            integer :: ii
+
+            DO ii = 1,nV-1
+             IF ((hauteur.GE.rel_HV(1,ii)).AND.(hauteur.LE.rel_HV(1,ii+1))) THEN
+                volume = rel_HV(2,ii) + (hauteur-rel_HV(1,ii))*(rel_HV(2,ii+1)-rel_HV(2,ii))/(rel_HV(1,ii+1)-rel_HV(1,ii))
+                exit
+             ENDIF
+            ENDDO
+
+        END SUBROUTINE H_to_V
+
+        !**************************************************************************
+        !.....Calcul de Q(m3/s) sortant pour un H(m) donné 
+        !**************************************************************************
+        SUBROUTINE H_to_Q(nq, rel_HQ, hauteur, qsortant)
+
+            IMPLICIT none
+
+            integer, intent(in) :: nq
+            real, intent(in)  :: hauteur
+            real, intent(out) :: qsortant
+            real, dimension(2,nq) :: rel_HQ
+            integer :: ii
+
+            DO ii = 1,nQ-1
+             IF ((hauteur.GE.rel_HQ(1,ii)).AND.(hauteur.LE.rel_HQ(1,ii+1))) THEN
+                qsortant = rel_HQ(2,ii) + (hauteur-rel_HQ(1,ii))*(rel_HQ(2,ii+1)-rel_HQ(2,ii))/(rel_HQ(1,ii+1)-rel_HQ(1,ii))
+                exit
+             ENDIF
+            ENDDO
+
+        END SUBROUTINE H_to_Q
+
+      
+    END SUBROUTINE LAMINAGE
 
 end module md_routing_operator
