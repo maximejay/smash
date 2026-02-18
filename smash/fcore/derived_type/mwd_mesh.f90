@@ -35,6 +35,7 @@
 !%          ``area_dln``             Drained area at gauge position delineated                     [m2]
 !%          ``rowcol_to_ind_ac``     Matrix linking (row, col) couple to active cell indice (k)
 !%          ``local_active_cell``    Mask of local active cells
+!%          ``hydraulics_discontinuities`` Hydraulics discontinuities
 !%
 !%      Subroutine
 !%      ----------
@@ -46,6 +47,7 @@ module mwd_mesh
 
     use md_constant !%only: sp
     use mwd_setup !% only: SetupDT
+    use mwd_discontinuities
 
     implicit none
 
@@ -86,6 +88,8 @@ module mwd_mesh
 
         integer, dimension(:, :), allocatable :: rowcol_to_ind_ac !$F90W index-array
         integer, dimension(:, :), allocatable :: local_active_cell
+        
+        type(discontinuitiesDT) :: hydraulics_discontinuities
 
     end type MeshDT
 
@@ -97,12 +101,13 @@ contains
 
         type(MeshDT), intent(inout) :: this
         type(SetupDT), intent(inout) :: setup
-        integer, intent(in) :: nrow, ncol, npar, ng
+        integer, intent(in) :: nrow, ncol, npar, ng!, nd
 
         this%nrow = nrow
         this%ncol = ncol
         this%npar = npar
         this%ng = ng
+!~         this%nd = nd
 
         this%xres = -99._sp
         this%yres = -99._sp
@@ -159,6 +164,7 @@ contains
 
         allocate (this%local_active_cell(this%nrow, this%ncol))
         this%local_active_cell = -99
+        
 
     end subroutine MeshDT_initialise
 

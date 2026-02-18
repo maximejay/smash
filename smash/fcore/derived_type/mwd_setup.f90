@@ -159,7 +159,7 @@ module mwd_setup
         integer, dimension(2) :: hidden_neuron = -99
         integer, dimension(4) :: neurons = -99
         
-        type(discontinuitiesDT), dimension(:), allocatable :: hydraulics_discontinuities
+!~         type(discontinuitiesDT), dimension(:), allocatable :: hydraulics_discontinuities
 
     end type SetupDT
     

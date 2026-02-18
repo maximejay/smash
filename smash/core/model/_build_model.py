@@ -41,6 +41,11 @@ from smash.fcore._mwd_sparse_matrix_manipulation import (
     compute_rowcol_to_ind_ac as wrap_compute_rowcol_to_ind_ac,
 )
 
+# from smash.fcore._mw_hydraulics_discontinuities import (
+#     map_dict_hd_dam_to_mesh as wrap_map_dict_hd_dam_to_mesh,
+# )
+from smash.fcore._mwd_discontinuities import discontinuitiesDT
+
 if TYPE_CHECKING:
     from smash.fcore._mwd_input_data import Input_DataDT
     from smash.fcore._mwd_mesh import MeshDT
@@ -51,7 +56,9 @@ if TYPE_CHECKING:
 
 
 # % TODO: Move this function to a generic common function file
-def _map_dict_to_fortran_derived_type(dct: dict, fdt: FortranDerivedType, skip: ListLike | None = None):
+def _map_dict_to_fortran_derived_type(
+    dct: dict, fdt: FortranDerivedType, skip: ListLike | None = None
+):
     if skip is None:
         skip = []
     for key, value in dct.items():
@@ -78,9 +85,102 @@ def _map_dict_to_fortran_derived_type(dct: dict, fdt: FortranDerivedType, skip: 
                 setattr(fdt, key, value)
 
 
-def _build_mesh(setup: SetupDT, mesh: MeshDT):
+def map_hydraulics_discontinuities_to_discontinuitiesDT(
+    setup: SetupDT, mesh: MeshDT, mesh_hd_dict: dict
+):
+
+    nmax_val = 0
+    if "rules" in mesh_hd_dict.keys():
+        for name, hd in mesh_hd_dict["rules"].items():
+            if "rel_hv" in hd.keys():
+                nmax_val = max(len(hd["rel_hv"]), nmax_val)
+
+    if "discontinuities_code" in mesh_hd_dict.keys():
+        nb_dam = np.sum(mesh_hd_dict["discontinuities_code"] == 1)
+        nb_input_q = np.sum(mesh_hd_dict["discontinuities_code"] == 2)
+    else:
+        nb_dam = 0
+        nb_input_q = 0
+
+    if "discontinuities_name" in mesh_hd_dict.keys():
+        nb_dh = len(mesh_hd_dict["discontinuities_name"])
+    else:
+        nb_hd = 0
+
+    mesh.hydraulics_discontinuities = discontinuitiesDT(
+        nb_hd,
+        mesh.nrow,
+        mesh.ncol,
+        setup.ntime_step,
+        nb_dam,
+        nb_input_q,
+        nmax_val,
+    )
+
+    # if "discontinuities_name" in mesh_hd_dict.keys():
+    #     setattr(
+    #         mesh.hydraulics_discontinuities,
+    #         "discontinuities_name",
+    #         mesh_hd_dict["discontinuities_name"],
+    #     )
+
+    if "discontinuities_name" in mesh_hd_dict.keys():
+        mesh.hydraulics_discontinuities.discontinuities_name = mesh_hd_dict[
+            "discontinuities_name"
+        ]
+    if "discontinuities_type" in mesh_hd_dict.keys():
+        mesh.hydraulics_discontinuities.discontinuities_type = mesh_hd_dict[
+            "discontinuities_type"
+        ]
+    if "discontinuities_rank" in mesh_hd_dict.keys():
+        mesh.hydraulics_discontinuities.discontinuities_rank = mesh_hd_dict[
+            "discontinuities_rank"
+        ]
+    if "discontinuities_code" in mesh_hd_dict.keys():
+        mesh.hydraulics_discontinuities.discontinuities_code = mesh_hd_dict[
+            "discontinuities_code"
+        ]
+
+    if "rules" in mesh_hd_dict.keys():
+        rank_dam = 0
+        rank_input_q = 0
+        for name, hd in mesh_hd_dict["rules"].items():
+
+            i = np.where(mesh_hd_dict["discontinuities_name"] == name)[0]
+
+            if mesh_hd_dict["discontinuities_type"][i] == "dam":
+                rank_dam = +1
+                mesh.hydraulics_discontinuities.dam_hv[rank_dam - 1, :, :] = np.transpose(
+                    hd["rel_hv"][:, :]
+                )
+                mesh.hydraulics_discontinuities.dam_hq[rank_dam - 1, :, :] = np.transpose(
+                    hd["rel_hq"][:, :]
+                )
+
+            elif mesh_hd_dict["discontinuities_type"][i] == "input_q":
+                rank_input_q = +1
+                mesh.hydraulics_discontinuities.input_q[rank_input_q - 1, :] = 0.0
+                mesh.hydraulics_discontinuities.input_q[
+                    rank_input_q - 1, 0 : len(hd["input_q"])
+                ] = hd["input_q"][:]
+
+
+def _build_mesh(setup: SetupDT, mesh: MeshDT, mesh_input: dict):
+
     wrap_compute_rowcol_to_ind_ac(mesh)  # % Fortran subroutine
     mesh.local_active_cell = mesh.active_cell.copy()
+
+    # hd_dict_to_mesh = trans_dict_hydraulics_discontinuities_to_mesh(
+    #     setup, hydraulics_discontinuities
+    # )
+
+    hydraulics_discontinuities = {}
+    if "hydraulics_discontinuities" in mesh_input.keys():
+        hydraulics_discontinuities = mesh_input["hydraulics_discontinuities"]
+
+    map_hydraulics_discontinuities_to_discontinuitiesDT(
+        setup, mesh, hydraulics_discontinuities
+    )
 
 
 def _build_input_data(setup: SetupDT, mesh: MeshDT, input_data: Input_DataDT):
@@ -125,9 +225,9 @@ def _adjust_interception(
     if STRUCTURE_ADJUST_CI[setup.structure] and setup.dt < 86_400:
         print("</> Adjusting GR interception capacity")
         # % Date
-        day_index = pd.date_range(start=setup.start_time, end=setup.end_time, freq=f"{int(setup.dt)}s")[
-            1:
-        ].to_series()
+        day_index = pd.date_range(
+            start=setup.start_time, end=setup.end_time, freq=f"{int(setup.dt)}s"
+        )[1:].to_series()
 
         # % Date to proleptic Gregorian ordinal
         day_index = day_index.apply(lambda x: x.toordinal()).to_numpy()
@@ -201,7 +301,9 @@ def _build_parameters(
         parameters.serr_mu_parameters.values[..., i] = value
 
     # % Build structural error sigma parameters
-    parameters.serr_sigma_parameters.keys = SERR_SIGMA_MAPPING_PARAMETERS[setup.serr_sigma_mapping]
+    parameters.serr_sigma_parameters.keys = SERR_SIGMA_MAPPING_PARAMETERS[
+        setup.serr_sigma_mapping
+    ]
 
     for i, key in enumerate(parameters.serr_sigma_parameters.keys):
         value = DEFAULT_SERR_SIGMA_PARAMETERS[key]

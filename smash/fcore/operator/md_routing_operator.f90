@@ -243,7 +243,7 @@ contains
         real(sp), dimension(mesh%nac), intent(inout) :: ac_hlr
         real(sp), dimension(mesh%nac, setup%nqz), intent(inout) :: ac_qz
 
-        integer :: i, j, row, col, k, time_step_returns
+        integer :: i, j, row, col, k, time_step_returns, index_dam, index_input_q
         real(sp) :: qup, qr, hdams
 
         ac_qz(:, setup%nqz) = ac_qtz(:, setup%nqz)
@@ -276,8 +276,17 @@ contains
                     !mesh%hydraulics_discontinuities will be a array of size nac, where discontinuity_type="zeros" except if discontinuity listed in setup
                     !duplicate the setup%hydraulics_discontinuities in the mesh but with size of nac
                     !need a states variable (h cote du barrage) to be passed to LAMINAGE
-                    if (setup%hydraulics_discontinuities(k)%discontinuity_type .eq. "dams") then
-                        call LAMINAGE(setup%dt, setup%hydraulics_discontinuities(k)%dams, qr, hdams, ac_qz(k, setup%nqz))
+                    if (mesh%hydraulics_discontinuities%discontinuities_code(row, col) .eq. 1) then
+                        write(*,*) "Barrage !!"
+                        index_dam=mesh%hydraulics_discontinuities%discontinuities_rank(row,col)
+                        
+                        call LAMINAGE(setup%dt, mesh%hydraulics_discontinuities%dam_hv(index_dam,:,:),&
+                        &mesh%hydraulics_discontinuities%dam_hq(index_dam,:,:), qr, hdams, ac_qz(k, setup%nqz))
+                    
+                    else if (mesh%hydraulics_discontinuities%discontinuities_code(row, col) .eq. 2) then
+                        write(*,*) "INPUT !!"
+                        index_input_q=mesh%hydraulics_discontinuities%discontinuities_rank(row,col)
+                        ac_qz(k, setup%nqz)=qr + mesh%hydraulics_discontinuities%input_q(index_input_q,time_step)
                     else
                         ac_qz(k, setup%nqz)=qr
                     end if
@@ -460,7 +469,7 @@ contains
 
     end subroutine kw_time_step
     
-        !*************************************************************************
+    !*************************************************************************
     !      PROCEDURE DE LAMINAGE
     !      npdt = nombre de pas de temps de la chronique de débit entrant
     !      dt = pas de temps de la chronique de débit entrant (secondes)
@@ -472,13 +481,13 @@ contains
     !      x2 = cote du plan d'eau (m)
     !      x3 = debit sortant (m3/s)
     !*************************************************************************
-    SUBROUTINE LAMINAGE(dt, dams, x1, x2, x3)
+    SUBROUTINE LAMINAGE(dt, rel_hv, rel_hq, x1, x2, x3)
 
         implicit none
 
         real, intent(in)    :: dt
-        type(damsDT), intent(in) :: dams
-        
+        real, dimension(:,:), intent(in) :: rel_hv
+        real, dimension(:,:), intent(in) :: rel_hq
         real, intent(out)    :: x1, x2, x3
         
         !~         double precision, dimension(2,n_HV), intent(in)    :: rel_HV
@@ -493,8 +502,8 @@ contains
         Zini = 0. ! initialisation a la premier valeur du fichier H_V (equivalent au barrage vide)
         VOLt = 0.
 
-        n_HV=size(dams%rel_HV)
-        n_HQ=size(dams%rel_HQ)
+        n_HV=size(rel_hv,dim=2)
+        n_HQ=size(rel_hq,dim=2)
         
         x2 = Zini
         
@@ -502,44 +511,44 @@ contains
         
         if (dt_min .eqv. .TRUE.) then
         
-           qoutmoy = 0.
-           zoutmax = -999.
-           DO i=1,int(dt/60.)             ! boucle sur les pas de temps en minutes
+            qoutmoy = 0.
+            zoutmax = -999.
+            DO i=1,int(dt/60.)             ! boucle sur les pas de temps en minutes
 !~              VOLin = (x1(i) + (j-1)/(dt/60.)*(x1(i+1)-x1(i))) * 60. / 1000000.  ! Transformation des m3/s en Mm3 par min
                 VOLin = x1/int(dt/60.) * 60. / 1000000.  ! Transformation des m3/s en Mm3 par min
                 VOLt = VOLt + VOLin
                 
-                CALL V_to_H(n_HV, dams%rel_HV, VOLt, Z)
-                CALL H_to_Q(n_HQ, dams%rel_HQ, Z, Qbid)
+                CALL V_to_H(n_HV, rel_HV, VOLt, Z)
+                CALL H_to_Q(n_HQ, rel_HQ, Z, Qbid)
                 
                 VOLout = Qbid / 1000000. * 60.
                 VOLt = VOLt - VOLout
                 
-                CALL V_to_H(n_HV, dams%rel_HV, VOLt, Z)
+                CALL V_to_H(n_HV, rel_HV, VOLt, Z)
                 
                 qoutmoy = qoutmoy + Qbid
                 
                 IF (Z.GT.zoutmax) zoutmax = Z
                 
             ENDDO ! fin de la boucle sur l'heure
-           x2 = zoutmax
-           x3 = qoutmoy/(dt/60.)
+            x2 = zoutmax
+            x3 = qoutmoy/(dt/60.)
            
         else ! on n'est pas dans un evenement pluvieux donc on reste au pas de temps horaire
         
-           VOLin = x1 / 1000000. * dt ! Transformation des m3/s de l'hydrogramme en Mm3 par pas de temps
-           VOLt = VOLt + VOLin
+            VOLin = x1 / 1000000. * dt ! Transformation des m3/s de l'hydrogramme en Mm3 par pas de temps
+            VOLt = VOLt + VOLin
            
-           CALL V_to_H(n_HV, dams%rel_HV, VOLt, Z)
-           CALL H_to_Q(n_HQ, dams%rel_HQ, Z, Qbid)
+            CALL V_to_H(n_HV, rel_HV, VOLt, Z)
+            CALL H_to_Q(n_HQ, rel_HQ, Z, Qbid)
            
-           VOLout= Qbid / 1000000. * dt
-           VOLt = VOLt - VOLout
+            VOLout= Qbid / 1000000. * dt
+            VOLt = VOLt - VOLout
            
-           CALL V_to_H(n_HV, dams%rel_HV, VOLt, Z)
+            CALL V_to_H(n_HV, rel_HV, VOLt, Z)
            
-           x2 = Z
-           x3 = Qbid
+            x2 = Z
+            x3 = Qbid
            
         endif
 

@@ -10,16 +10,21 @@ import rasterio
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+    from smash.fcore._mwd_setup import SetupDT
 
 
-def _xy_to_rowcol(x: float, y: float, xmin: float, ymax: float, xres: float, yres: float) -> tuple:
+def _xy_to_rowcol(
+    x: float, y: float, xmin: float, ymax: float, xres: float, yres: float
+) -> tuple:
     row = int((ymax - y) / yres)
     col = int((x - xmin) / xres)
 
     return row, col
 
 
-def _rowcol_to_xy(row: int, col: int, xmin: float, ymax: float, xres: float, yres: float) -> tuple:
+def _rowcol_to_xy(
+    row: int, col: int, xmin: float, ymax: float, xres: float, yres: float
+) -> tuple:
     x = int(col * xres + xmin)
     y = int(ymax - row * yres)
 
@@ -72,7 +77,9 @@ def _trim_mask_2d(
         return array
 
 
-def _get_array(flwdir_dataset: rasterio.DatasetReader, bbox: np.ndarray | None = None) -> np.ndarray:
+def _get_array(
+    flwdir_dataset: rasterio.DatasetReader, bbox: np.ndarray | None = None
+) -> np.ndarray:
     if bbox is None:
         flwdir = flwdir_dataset.read(1)
 
@@ -84,7 +91,9 @@ def _get_array(flwdir_dataset: rasterio.DatasetReader, bbox: np.ndarray | None =
         ncol = int((bbox[1] - bbox[0]) / xres)
         nrow = int((bbox[3] - bbox[2]) / yres)
 
-        flwdir = flwdir_dataset.read(1, window=rasterio.windows.Window(col_off, row_off, ncol, nrow))
+        flwdir = flwdir_dataset.read(
+            1, window=rasterio.windows.Window(col_off, row_off, ncol, nrow)
+        )
 
     return flwdir
 
@@ -154,3 +163,67 @@ def _load_shp_dataset(shp_path: str, code: np.ndarray) -> gpd.GeoDataFrame:
         )
 
     return shp_dataset
+
+
+def _trans_dict_hydraulics_discontinuities_to_discontinuitiesDT(
+    setup: SetupDT, hydraulics_discontinuities: dict
+):
+    discontinuities_type = []
+    discontinuities_rank = []
+    discontinuities_name = []
+    rk_dam = 0
+    rk_input = 0
+    nmax_val = 0
+
+    for name, hd in hydraulics_discontinuities.items():
+
+        if hd["hd_type"] == "dam":
+            rk_dam = +1
+            rank = rk_dam
+        else:
+            rk_input = +1
+            rank = rk_input
+
+        discontinuities_name.append(name)
+        discontinuities_type.append(hd["hd_type"])
+        discontinuities_rank.append(rank)
+
+        nmax_val = max(len(hd["rules"]["rel_hv"]), nmax_val)
+
+    nd = len(hydraulics_discontinuities.keys())
+    ntime_step = setup.ntime_step
+
+    dam_hv = np.ndarray(shape=(nd, nmax_val))
+    dam_hq = np.ndarray(shape=(nd, nmax_val))
+    input_q = np.ndarray(shape=(nd, nmax_val))
+
+    dam_hv = -99.0
+    dam_hq = -99.0
+    input_q = -99.0
+
+    for i, name in enumerate(discontinuities_name):
+
+        if discontinuities_type[i] == "dam":
+            j = hydraulics_discontinuities[name]["rules"]["rel_hv"].shape[0]
+            dam_hv[i, 0:j, :] = hydraulics_discontinuities[name]["rules"]["rel_hv"][:, :]
+            dam_hq[i, 0:j, :] = hydraulics_discontinuities[name]["rules"]["rel_hq"][:, :]
+
+        elif discontinuities_type[i] == "input_q":
+
+            input_q[i, 0:ntime_step, :] = hydraulics_discontinuities[name]["rules"][
+                "input_q"
+            ][:, :]
+
+        else:
+            continue
+
+    return {
+        "hydraulics_discontinuities": {
+            "discontinuities_name": discontinuities_name,
+            "discontinuities_type": discontinuities_type,
+            "discontinuities_rank": discontinuities_rank,
+            "dam_hv": dam_hv,
+            "dam_hq": dam_hq,
+            "input_q": input_q,
+        }
+    }
