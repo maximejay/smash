@@ -8,6 +8,7 @@ module mwd_discontinuities
         
         character(lchar), dimension(:), allocatable :: discontinuities_name !$F90W char-array
         character(lchar), dimension(:), allocatable :: discontinuities_type !$F90W char-array
+        integer, dimension(:,:), allocatable :: discontinuities_pos
         integer, dimension(:,:), allocatable :: discontinuities_rank
         integer, dimension(:,:), allocatable :: discontinuities_code
         integer :: n_dam
@@ -42,6 +43,7 @@ module mwd_discontinuities
         
         allocate(this%discontinuities_name(nd))
         allocate(this%discontinuities_type(nd))
+        allocate(this%discontinuities_pos(nd,2))
         
         allocate(this%discontinuities_rank(nrow,ncol))
         allocate(this%discontinuities_code(nrow,ncol))

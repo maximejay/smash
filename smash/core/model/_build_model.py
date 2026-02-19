@@ -103,7 +103,7 @@ def map_hydraulics_discontinuities_to_discontinuitiesDT(
         nb_input_q = 0
 
     if "discontinuities_name" in mesh_hd_dict.keys():
-        nb_dh = len(mesh_hd_dict["discontinuities_name"])
+        nb_hd = len(mesh_hd_dict["discontinuities_name"])
     else:
         nb_hd = 0
 
@@ -117,13 +117,6 @@ def map_hydraulics_discontinuities_to_discontinuitiesDT(
         nmax_val,
     )
 
-    # if "discontinuities_name" in mesh_hd_dict.keys():
-    #     setattr(
-    #         mesh.hydraulics_discontinuities,
-    #         "discontinuities_name",
-    #         mesh_hd_dict["discontinuities_name"],
-    #     )
-
     if "discontinuities_name" in mesh_hd_dict.keys():
         mesh.hydraulics_discontinuities.discontinuities_name = mesh_hd_dict[
             "discontinuities_name"
@@ -131,6 +124,10 @@ def map_hydraulics_discontinuities_to_discontinuitiesDT(
     if "discontinuities_type" in mesh_hd_dict.keys():
         mesh.hydraulics_discontinuities.discontinuities_type = mesh_hd_dict[
             "discontinuities_type"
+        ]
+    if "discontinuities_pos" in mesh_hd_dict.keys():
+        mesh.hydraulics_discontinuities.discontinuities_pos = mesh_hd_dict[
+            "discontinuities_pos"
         ]
     if "discontinuities_rank" in mesh_hd_dict.keys():
         mesh.hydraulics_discontinuities.discontinuities_rank = mesh_hd_dict[
@@ -150,12 +147,14 @@ def map_hydraulics_discontinuities_to_discontinuitiesDT(
 
             if mesh_hd_dict["discontinuities_type"][i] == "dam":
                 rank_dam = +1
-                mesh.hydraulics_discontinuities.dam_hv[rank_dam - 1, :, :] = np.transpose(
-                    hd["rel_hv"][:, :]
-                )
-                mesh.hydraulics_discontinuities.dam_hq[rank_dam - 1, :, :] = np.transpose(
-                    hd["rel_hq"][:, :]
-                )
+
+                mesh.hydraulics_discontinuities.dam_hv[
+                    rank_dam - 1, :, 0 : hd["rel_hv"].shape[0]
+                ] = np.transpose(hd["rel_hv"][:, :])
+
+                mesh.hydraulics_discontinuities.dam_hq[
+                    rank_dam - 1, :, 0 : hd["rel_hq"].shape[0]
+                ] = np.transpose(hd["rel_hq"][:, :])
 
             elif mesh_hd_dict["discontinuities_type"][i] == "input_q":
                 rank_input_q = +1
@@ -169,10 +168,6 @@ def _build_mesh(setup: SetupDT, mesh: MeshDT, mesh_input: dict):
 
     wrap_compute_rowcol_to_ind_ac(mesh)  # % Fortran subroutine
     mesh.local_active_cell = mesh.active_cell.copy()
-
-    # hd_dict_to_mesh = trans_dict_hydraulics_discontinuities_to_mesh(
-    #     setup, hydraulics_discontinuities
-    # )
 
     hydraulics_discontinuities = {}
     if "hydraulics_discontinuities" in mesh_input.keys():

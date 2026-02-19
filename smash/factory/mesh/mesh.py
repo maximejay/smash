@@ -526,11 +526,13 @@ def _generate_mesh_from_xy(
     hydraulics_discontinuities: dict = {},
 ) -> dict:
 
+    # Getting data from hydraulics_discontinuities
+    # Better way could be : add a list of list describing the input gauge:
+    # type=[[gauge],[gauge,dam],[input_q],[gague]]
     x_hd = np.zeros(len(hydraulics_discontinuities.keys()))
     y_hd = np.zeros(len(hydraulics_discontinuities.keys()))
     area_hd = np.zeros(len(hydraulics_discontinuities.keys()))
     type_outlets_hd = np.zeros(len(hydraulics_discontinuities.keys()))
-    # literal_type_outlets_hd = np.zeros(len(hydraulics_discontinuities.keys()))
     code_hd = list()
     literal_type_outlets_hd = list()
 
@@ -547,7 +549,6 @@ def _generate_mesh_from_xy(
             type_outlets_hd[i] = 2
         i = +1
 
-    # type_hd = np.zeros(shape=(x.size + x_hd.size))
     type_outlets = np.zeros(shape=(x.size))
     literal_type_outlets = np.array(["gauge" for i in range(x.size)])
     type_outlets = np.concatenate((type_outlets, type_outlets_hd), axis=0)
@@ -555,6 +556,7 @@ def _generate_mesh_from_xy(
         (literal_type_outlets, np.array(literal_type_outlets_hd)), axis=0
     )
 
+    # concatenate hydraulics_discontinuities
     x = np.concatenate((x, x_hd), axis=0)
     y = np.concatenate((y, y_hd), axis=0)
     area = np.concatenate((area, area_hd), axis=0)
@@ -566,6 +568,9 @@ def _generate_mesh_from_xy(
     epsg = crs.to_epsg()
 
     flwdir = _get_array(flwdir_dataset)
+
+    # % Can close dataset
+    flwdir_dataset.close()
 
     # % Accepting arrays for dx and dy in case of unstructured meshing
     if crs.units_factor[0].lower() == "degree":
@@ -765,9 +770,8 @@ def _generate_mesh_from_xy(
 
     discontinuities_rank = np.zeros(shape=(flwdir.shape[0], flwdir.shape[1]))
     discontinuities_code = np.zeros(shape=(flwdir.shape[0], flwdir.shape[1]))
+    discontinuities_pos = np.zeros(shape=(x_hd.size, 2), dtype=np.int32)
 
-    # discontinuities_type = []
-    # discontinuities_name = []
     rk_dam = 0
     rk_input = 0
     rules = dict(())
@@ -783,6 +787,7 @@ def _generate_mesh_from_xy(
         else:
             continue
 
+        discontinuities_pos[i, :] = np.array([int(row_hd[i]), int(col_hd[i])])
         discontinuities_rank[row_hd[i], col_hd[i]] = rank
         discontinuities_code[row_hd[i], col_hd[i]] = type_outlets_hd[i]
 
@@ -791,50 +796,11 @@ def _generate_mesh_from_xy(
     hydraulics_discontinuities = {
         "discontinuities_name": code_hd,
         "discontinuities_type": literal_type_outlets_hd,
+        "discontinuities_pos": discontinuities_pos,
         "discontinuities_rank": np.array(discontinuities_rank),  # nrow,ncol
         "discontinuities_code": np.array(discontinuities_code),  # nrow,ncol
         "rules": rules,
     }
-
-    # for name, hd in hydraulics_discontinuities.items():
-
-    # row, col = _position_discontinuities_from_xy(
-    #     flwdir_dataset=flwdir_dataset,
-    #     x=hd["coords"][0],
-    #     y=hd["coords"][1],
-    #     area=hd["area"],
-    #     code=name,
-    #     bbox=bbox,
-    #     max_depth=max_depth,
-    #     epsg=epsg,
-    #     area_error_th=area_error_th,
-    # )
-
-    # if row is None or col is None:
-    #     print(f"</> Warning: Cannot locate the hydraulic discontinuity {name} ...")
-    #     continue
-
-    # if hd["hd_type"] == "dam":
-    #     rk_dam = +1
-    #     rank = rk_dam
-    #     code = 1
-    # elif hd["hd_type"] == "input_q":
-    #     rk_input = +1
-    #     rank = rk_input
-    #     code = 2
-    # else:
-    #     continue
-
-    # discontinuities_name.append(name)
-    # discontinuities_type.append(hd["hd_type"])
-
-    # discontinuities_rank[row, col] = rank
-    # discontinuities_code[row, col] = code  # 1=barrage ; 2 = input_q
-
-    # rules.update({name: hd["rules"]})
-
-    # % Can close dataset
-    flwdir_dataset.close()
 
     mesh = {
         "xres": xres,
