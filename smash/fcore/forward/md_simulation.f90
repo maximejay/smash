@@ -797,6 +797,7 @@ contains
                 call lr_time_step( &
                     setup, &
                     mesh, &
+                    input_data, &
                     options, &
                     returns, &
                     t, &

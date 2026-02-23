@@ -100,6 +100,8 @@ if TYPE_CHECKING:
     from smash.fcore._mwd_serr_mu_parameters import SErr_Mu_ParametersDT
     from smash.fcore._mwd_serr_sigma_parameters import SErr_Sigma_ParametersDT
     from smash.fcore._mwd_u_response_data import U_Response_DataDT
+    from smash.fcore._mwd_hydraulic_structure import Hydraulic_StructureDT
+    from smash.fcore._mwd_hydraulic_structure import Hydraulic_StructureDT_reallocate
     from smash.util._typing import ListLike, Numeric
 
 __all__ = ["Model"]
@@ -450,9 +452,7 @@ class Model:
                 self.setup, mesh["nrow"], mesh["ncol"], mesh["npar"], mesh["ng"]
             )
 
-            _map_dict_to_fortran_derived_type(
-                mesh, self.mesh, skip=["hydraulics_discontinuities"]
-            )
+            _map_dict_to_fortran_derived_type(mesh, self.mesh)
 
             _build_mesh(self.setup, self.mesh, mesh)
 
@@ -689,6 +689,54 @@ class Model:
     @response_data.setter
     def response_data(self, value: Response_DataDT):
         self._input_data.response_data = value
+
+    @property
+    def hydraulic_structure(self) -> Hydraulic_StructureDT:
+        """
+        Model response data.
+
+        Returns
+        -------
+        response_data : `Response_DataDT <fcore._mwd_response_data.Response_DataDT>`
+            It returns a Fortran derived type containing the variables relating to the response data.
+
+        Examples
+        --------
+        >>> from smash.factory import load_dataset
+        >>> setup, mesh = load_dataset("cance")
+        >>> model = smash.Model(setup, mesh)
+
+        Access to Model response data
+
+        >>> model.response_data
+        Response_DataDT
+            q: array([[ 1.237,  1.232,  1.224, ..., 22.951, 22.813, 22.691],
+            [ 0.38 ,  0.382,  0.385, ...,  6.789,  6.759,  6.729],
+            [ 0.094,  0.094,  0.094, ...,  1.588,  1.578,  1.568]],
+            dtype=float32)
+
+        Access to a specific gauge observed discharge time serie
+
+        >>> model.mesh.code
+        array(['V3524010', 'V3515010', 'V3517010'], dtype='<U8')
+        >>> ind = np.argwhere(model.mesh.code == "V3524010").item()
+        >>> ind
+        0
+        >>> model.response_data.q[ind, :]
+        array([ 1.237,  1.232,  1.224, ..., 22.951, 22.813, 22.691], dtype=float32)
+
+        If you are using IPython, tab completion allows you to visualize all the attributes and methods
+
+        >>> model.response_data.<TAB>
+        model.response_data.copy()        model.response_data.q
+        model.response_data.from_handle(
+        """
+
+        return self._input_data.hydraulic_structure
+
+    @hydraulic_structure.setter
+    def hydraulic_structure(self, value: Hydraulic_StructureDT):
+        self._input_data.hydraulic_structure = value
 
     @property
     def u_response_data(self) -> U_Response_DataDT:
@@ -1417,6 +1465,21 @@ class Model:
         """
 
         return self.__copy__()
+
+    def set_hydraulic_structure_data(self, key, values):
+
+        if key in ["dam_hv", "dam_hq"]:
+
+            Hydraulic_StructureDT_reallocate(
+                self.input_data.hydraulic_structure,
+                key,
+                self.mesh.ndam,
+                self.mesh.ninflow,
+                self.setup.ntime_step,
+                values.shape[2],
+            )
+
+        setattr(self.input_data.hydraulic_structure, key, values)
 
     def get_rr_parameters(self, key: str) -> NDArray[np.float32]:
         """

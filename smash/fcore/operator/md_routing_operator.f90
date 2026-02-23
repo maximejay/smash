@@ -12,12 +12,13 @@
 
 module md_routing_operator
 
-    use md_constant !% only : sp
+    use md_constant !% only : sp, lchar
     use mwd_setup !% only: SetupDT
     use mwd_mesh !% only: MeshDT
     use mwd_options !% only: OptionsDT
     use mwd_returns !% only: ReturnsDT
     use mwd_discontinuities
+    use mwd_input_data !% only: Input_DataDT
 
     implicit none
 
@@ -52,11 +53,12 @@ contains
 
     end subroutine upstream_discharge
     
-    subroutine hydraulics_discontinuities(setup, mesh, time_step, row, col, k, ac_hd, ac_qz)
+    subroutine hydraulics_discontinuities(setup, mesh, input_data, time_step, row, col, k, ac_hd, ac_qz)
         implicit none
 
         type(SetupDT), intent(in) :: setup
         type(MeshDT), intent(in) :: mesh
+        type(Input_DataDT), intent(in) :: input_data
         integer, intent(in) :: row
         integer, intent(in) :: col
         integer, intent(in) :: k
@@ -64,20 +66,31 @@ contains
         real(sp), dimension(mesh%nac), intent(inout) :: ac_hd
         real(sp), dimension(mesh%nac, setup%nqz), intent(inout) :: ac_qz
         
-        integer ::  index_dam, index_input_q
+        integer ::  ist, index_structure
+        character(lchar) :: structure_type
         
         !Hydraulics discontiuities
-        select case (mesh%hydraulics_discontinuities%discontinuities_code(row, col))
         
-        case(1)
-            index_dam=mesh%hydraulics_discontinuities%discontinuities_rank(row,col)
+        if (mesh%hs_index(row, col)>0) then
+            index_structure=mesh%hs_index(row, col)+1
+            structure_type=mesh%outlet_type(index_structure)
+        else
+            structure_type="none"
+        end if
+        
+        select case (structure_type)
+        
+        case("dam")
+            write(*,*) structure_type
+            ist=mesh%hs_index_by_type(index_structure)+1
             
-            call laminage(setup%dt, mesh%hydraulics_discontinuities%dam_hv(index_dam,:,:),&
-            &mesh%hydraulics_discontinuities%dam_hq(index_dam,:,:), ac_qz(k, setup%nqz), ac_hd(k), ac_qz(k, setup%nqz))
+            call laminage(setup%dt, input_data%hydraulic_structure%dam_hv(ist,:,:),&
+            &input_data%hydraulic_structure%dam_hq(ist,:,:), ac_qz(k, setup%nqz), ac_hd(k), ac_qz(k, setup%nqz))
         
-        case(2)
-            index_input_q=mesh%hydraulics_discontinuities%discontinuities_rank(row,col)
-            ac_qz(k, setup%nqz)=ac_qz(k, setup%nqz) + mesh%hydraulics_discontinuities%input_q(index_input_q,time_step)
+        case("inflow")
+            write(*,*) structure_type
+            ist=mesh%hs_index_by_type(index_structure)+1
+            ac_qz(k, setup%nqz)=ac_qz(k, setup%nqz) + input_data%hydraulic_structure%inflow(ist,time_step)
             
         end select
         
@@ -260,12 +273,13 @@ contains
 
     end subroutine lag0_time_step
     
-    subroutine lr_time_step(setup, mesh, options, returns, time_step, ac_qtz, ac_llr, ac_hlr, ac_hd, ac_qz)
+    subroutine lr_time_step(setup, mesh, input_data, options, returns, time_step, ac_qtz, ac_llr, ac_hlr, ac_hd, ac_qz)
 
         implicit none
 
         type(SetupDT), intent(in) :: setup
         type(MeshDT), intent(in) :: mesh
+        type(Input_DataDT), intent(in) :: input_data
         type(OptionsDT), intent(in) :: options
         type(ReturnsDT), intent(inout) :: returns
         integer, intent(in) :: time_step
@@ -305,7 +319,7 @@ contains
                     & ac_llr(k), ac_hlr(k), qup, ac_qz(k, setup%nqz))
                     
                     !Hydraulics discontiuities
-                    call hydraulics_discontinuities(setup, mesh, time_step, row, col, k, ac_hd, ac_qz)
+                    call hydraulics_discontinuities(setup, mesh, input_data, time_step, row, col, k, ac_hd, ac_qz)
                     
                     !$AD start-exclude
                     !internal fluxes
@@ -345,7 +359,7 @@ contains
                     & ac_llr(k), ac_hlr(k), qup, ac_qz(k, setup%nqz))
                     
                     !Hydraulics discontiuities
-                    call hydraulics_discontinuities(setup, mesh, time_step, row, col, k, ac_hd, ac_qz)
+                    call hydraulics_discontinuities(setup, mesh, input_data, time_step, row, col, k, ac_hd, ac_qz)
 
                     !$AD start-exclude
                     !internal fluxes
@@ -517,6 +531,10 @@ contains
         z=x2
         qbid=0.
         qoutmoy = 0.
+        
+        if (rel_hv(1,1)<0. .OR. rel_hq(1,1)<0.) then
+            return
+        end if
         
         !cdl hv ou hq ?? Peut-on avoir des débits nulles dans smash ?
         if (z .lt. rel_hv(1,1)) then

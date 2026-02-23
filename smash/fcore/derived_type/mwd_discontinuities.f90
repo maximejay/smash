@@ -1,5 +1,3 @@
-
-
 module mwd_discontinuities
     
     use md_constant !% only: lchar
@@ -17,7 +15,6 @@ module mwd_discontinuities
         real(sp), dimension(:,:,:), allocatable :: dam_hv
         real(sp), dimension(:,:,:), allocatable :: dam_hq
         real(sp), dimension(:,:), allocatable :: input_q
-        
     
     end type discontinuitiesDT
     

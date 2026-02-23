@@ -153,6 +153,7 @@ def generate_mesh(
     y: Numeric | ListLike[float] | None = None,
     area: Numeric | ListLike[float] | None = None,
     code: str | ListLike[str] | None = None,
+    outlet_type: str | ListLike[str] | None = None,
     shp_path: FilePath | None = None,
     max_depth: Numeric = 1,
     epsg: AlphaNumeric | None = None,
@@ -386,130 +387,140 @@ def generate_mesh(
     """
 
     args = _standardize_generate_mesh_args(
-        flwdir_path, bbox, x, y, area, code, shp_path, max_depth, epsg, area_error_th
+        flwdir_path,
+        bbox,
+        x,
+        y,
+        area,
+        code,
+        outlet_type,
+        shp_path,
+        max_depth,
+        epsg,
+        area_error_th,
     )
 
     return _generate_mesh(*args, hydraulics_discontinuities)
 
 
-def _position_discontinuities_from_xy(
-    flwdir_dataset: rasterio.DatasetReader,
-    x: float,
-    y: float,
-    area: float,
-    code: str,
-    bbox: np.ndarray,
-    max_depth: int,
-    epsg: int,
-    area_error_th: float | None,
-) -> dict:
-    (xmin, _, xres, _, ymax, yres) = _get_transform(flwdir_dataset)
+# def _position_discontinuities_from_xy(
+#     flwdir_dataset: rasterio.DatasetReader,
+#     x: float,
+#     y: float,
+#     area: float,
+#     code: str,
+#     bbox: np.ndarray,
+#     max_depth: int,
+#     epsg: int,
+#     area_error_th: float | None,
+# ) -> dict:
+#     (xmin, _, xres, _, ymax, yres) = _get_transform(flwdir_dataset)
 
-    crs = _get_crs(flwdir_dataset, epsg)
-    epsg = crs.to_epsg()
+#     crs = _get_crs(flwdir_dataset, epsg)
+#     epsg = crs.to_epsg()
 
-    flwdir = _get_array(flwdir_dataset)
+#     flwdir = _get_array(flwdir_dataset)
 
-    # % Can close dataset
-    # flwdir_dataset.close()
+#     # % Can close dataset
+#     # flwdir_dataset.close()
 
-    # % Accepting arrays for dx and dy in case of unstructured meshing
-    if crs.units_factor[0].lower() == "degree":
-        dx, dy = mw_mesh.latlon_dxdy(*flwdir.shape, xres, yres, ymax)
+#     # % Accepting arrays for dx and dy in case of unstructured meshing
+#     if crs.units_factor[0].lower() == "degree":
+#         dx, dy = mw_mesh.latlon_dxdy(*flwdir.shape, xres, yres, ymax)
 
-    else:
-        dx = np.zeros(shape=flwdir.shape, dtype=np.float32) + xres
-        dy = np.zeros(shape=flwdir.shape, dtype=np.float32) + yres
+#     else:
+#         dx = np.zeros(shape=flwdir.shape, dtype=np.float32) + xres
+#         dy = np.zeros(shape=flwdir.shape, dtype=np.float32) + yres
 
-    # row_dln = np.zeros(shape=(1), dtype=np.int32)
-    # col_dln = np.zeros(shape=(1), dtype=np.int32)
-    # area_dln = np.zeros(shape=(1), dtype=np.float32)
-    sink_dln = np.zeros(shape=(1), dtype=np.bool)
+#     # row_dln = np.zeros(shape=(1), dtype=np.int32)
+#     # col_dln = np.zeros(shape=(1), dtype=np.int32)
+#     # area_dln = np.zeros(shape=(1), dtype=np.float32)
+#     sink_dln = np.zeros(shape=(1), dtype=np.bool)
 
-    mask_dln = np.zeros(shape=flwdir.shape, dtype=np.int32)
+#     mask_dln = np.zeros(shape=flwdir.shape, dtype=np.int32)
 
-    row, col = _xy_to_rowcol(x, y, xmin, ymax, xres, yres)
+#     row, col = _xy_to_rowcol(x, y, xmin, ymax, xres, yres)
 
-    # % Take a window of flow directions. It avoids to fill and clean too large
-    # % matrices. The boundaries of the window are obtained by assuming the
-    # % worst spatial pattern of draining area (i.e. a rectangular catchment
-    # % in x or y direction of 1 cell width).
-    slice_win = _get_catchment_slice_window(
-        *flwdir.shape, row, col, area, dx[row, col], dy[row, col], max_depth
-    )
+#     # % Take a window of flow directions. It avoids to fill and clean too large
+#     # % matrices. The boundaries of the window are obtained by assuming the
+#     # % worst spatial pattern of draining area (i.e. a rectangular catchment
+#     # % in x or y direction of 1 cell width).
+#     slice_win = _get_catchment_slice_window(
+#         *flwdir.shape, row, col, area, dx[row, col], dy[row, col], max_depth
+#     )
 
-    row_win = row - slice_win[0].start  # % srow
-    col_win = col - slice_win[1].start  # % scol
+#     row_win = row - slice_win[0].start  # % srow
+#     col_win = col - slice_win[1].start  # % scol
 
-    dx_win = dx[slice_win]
-    dy_win = dy[slice_win]
-    flwdir_win = flwdir[slice_win]
+#     dx_win = dx[slice_win]
+#     dy_win = dy[slice_win]
+#     flwdir_win = flwdir[slice_win]
 
-    mask_dln_win, row_dln_win, col_dln_win, sink_dln = mw_mesh.catchment_dln_area_based(
-        flwdir_win, dx_win, dy_win, row_win, col_win, area, max_depth
-    )
+#     mask_dln_win, row_dln_win, col_dln_win, sink_dln = mw_mesh.catchment_dln_area_based(
+#         flwdir_win, dx_win, dy_win, row_win, col_win, area, max_depth
+#     )
 
-    row_dln = row_dln_win + slice_win[0].start  # % srow
-    col_dln = col_dln_win + slice_win[1].start  # % scol
+#     row_dln = row_dln_win + slice_win[0].start  # % srow
+#     col_dln = col_dln_win + slice_win[1].start  # % scol
 
-    area_dln = np.sum(mask_dln_win * dx_win * dy_win)
+#     area_dln = np.sum(mask_dln_win * dx_win * dy_win)
 
-    if bbox is not None:
-        flwdir_win_ind = np.ma.masked_array(flwdir_win, mask=(1 - mask_dln_win))
-        flwdir_win_ind, slice_win_ind = _trim_mask_2d(flwdir_win_ind, slice_win=True)
+#     if bbox is not None:
+#         flwdir_win_ind = np.ma.masked_array(flwdir_win, mask=(1 - mask_dln_win))
+#         flwdir_win_ind, slice_win_ind = _trim_mask_2d(flwdir_win_ind, slice_win=True)
 
-        ymax_ind = ymax - (slice_win_ind[0].start + slice_win[0].start) * yres
-        ymin_ind = ymax_ind - (slice_win_ind[0].stop - slice_win_ind[0].start) * yres
+#         ymax_ind = ymax - (slice_win_ind[0].start + slice_win[0].start) * yres
+#         ymin_ind = ymax_ind - (slice_win_ind[0].stop - slice_win_ind[0].start) * yres
 
-        xmin_ind = xmin + (slice_win_ind[1].start + slice_win[1].start) * xres
-        xmax_ind = xmin_ind + (slice_win_ind[1].stop - slice_win_ind[1].start) * xres
+#         xmin_ind = xmin + (slice_win_ind[1].start + slice_win[1].start) * xres
+#         xmax_ind = xmin_ind + (slice_win_ind[1].stop - slice_win_ind[1].start) * xres
 
-        bbox_ind = np.array([xmin_ind, xmax_ind, ymin_ind, ymax_ind])
+#         bbox_ind = np.array([xmin_ind, xmax_ind, ymin_ind, ymax_ind])
 
-        if (
-            bbox_ind[0] < bbox[0]
-            or bbox_ind[1] > bbox[1]
-            or bbox_ind[2] < bbox[2]
-            or bbox_ind[3] > bbox[3]
-        ):
-            warnings.warn(
-                f"The extend of catchment {code} with bbox {bbox_ind} exceed"
-                f" the input bounding box {bbox}."
-                f" This catchment is removed from the mesh.",
-                stacklevel=2,
-            )
+#         if (
+#             bbox_ind[0] < bbox[0]
+#             or bbox_ind[1] > bbox[1]
+#             or bbox_ind[2] < bbox[2]
+#             or bbox_ind[3] > bbox[3]
+#         ):
+#             warnings.warn(
+#                 f"The extend of catchment {code} with bbox {bbox_ind} exceed"
+#                 f" the input bounding box {bbox}."
+#                 f" This catchment is removed from the mesh.",
+#                 stacklevel=2,
+#             )
 
-            return None, None
+#             return None, None
 
-    if area_error_th is not None:
-        if abs((area_dln - area) / area) > area_error_th:
-            warnings.warn(
-                f"The error of the modeled area for catchment {code} exceed the"
-                " threshold {area_error_th}. This catchment is removed",
-                stacklevel=2,
-            )
-            return None, None
+#     if area_error_th is not None:
+#         if abs((area_dln - area) / area) > area_error_th:
+#             warnings.warn(
+#                 f"The error of the modeled area for catchment {code} exceed the"
+#                 " threshold {area_error_th}. This catchment is removed",
+#                 stacklevel=2,
+#             )
+#             return None, None
 
-        mask_dln[slice_win] = np.where(mask_dln_win == 1, 1, mask_dln[slice_win])
+#         mask_dln[slice_win] = np.where(mask_dln_win == 1, 1, mask_dln[slice_win])
 
-    if bbox is None:
-        flwdir = np.ma.masked_array(flwdir, mask=(1 - mask_dln))
-        # slice flwdir according the border of the active domain
-        flwdir, slice_win = _trim_mask_2d(flwdir, slice_win=True)
+#     if bbox is None:
+#         flwdir = np.ma.masked_array(flwdir, mask=(1 - mask_dln))
+#         # slice flwdir according the border of the active domain
+#         flwdir, slice_win = _trim_mask_2d(flwdir, slice_win=True)
 
-    else:
-        col_off = int((bbox[0] - xmin) / xres)
-        row_off = int((ymax - bbox[3]) / yres)
-        ncol = int((bbox[1] - bbox[0]) / xres)
-        nrow = int((bbox[3] - bbox[2]) / yres)
+#     else:
+#         col_off = int((bbox[0] - xmin) / xres)
+#         row_off = int((ymax - bbox[3]) / yres)
+#         ncol = int((bbox[1] - bbox[0]) / xres)
+#         nrow = int((bbox[3] - bbox[2]) / yres)
 
-        slice_win = (slice(row_off, row_off + nrow), slice(col_off, col_off + ncol))
+#         slice_win = (slice(row_off, row_off + nrow), slice(col_off, col_off + ncol))
 
-    row_dln = row_dln - slice_win[0].start  # % srow
-    col_dln = col_dln - slice_win[1].start  # % scol
+#     row_dln = row_dln - slice_win[0].start  # % srow
+#     col_dln = col_dln - slice_win[1].start  # % scol
 
-    print(row_dln, col_dln)
-    return row_dln, col_dln
+#     print(row_dln, col_dln)
+#     return row_dln, col_dln
 
 
 def _generate_mesh_from_xy(
@@ -519,6 +530,7 @@ def _generate_mesh_from_xy(
     y: np.ndarray,
     area: np.ndarray,
     code: np.ndarray,
+    outlet_type: np.ndarray,
     shp_dataset: gpd.GeoDataFrame | None,
     max_depth: int,
     epsg: int,
@@ -742,65 +754,89 @@ def _generate_mesh_from_xy(
     active_cell = 1 - flwdir.mask.astype(np.int32)
 
     # restore hd vector
-    mask_type_hd = np.where(type_outlets >= 1)
-    x_hd = x[mask_type_hd]
-    y_hd = y[mask_type_hd]
-    area_hd = area[mask_type_hd]
-    code_hd = code[mask_type_hd]
-    row_hd = row_dln[mask_type_hd]
-    col_hd = col_dln[mask_type_hd]
-    type_outlets_hd = type_outlets[mask_type_hd]
-    literal_type_outlets_hd = literal_type_outlets[mask_type_hd]
+    # mask_type_hd = np.where(type_outlets >= 1)
+    # x_hd = x[mask_type_hd]
+    # y_hd = y[mask_type_hd]
+    # area_hd = area[mask_type_hd]
+    # code_hd = code[mask_type_hd]
+    # # row_hd = row_dln[mask_type_hd]
+    # # col_hd = col_dln[mask_type_hd]
+    # type_outlets_hd = type_outlets[mask_type_hd]
+    # literal_type_outlets_hd = literal_type_outlets[mask_type_hd]
 
     # restore gauge vector
-    mask_type_gauge = np.where(type_outlets == 0)
-    x = x[mask_type_gauge]
-    y = y[mask_type_gauge]
-    area = area[mask_type_gauge]
-    code = code[mask_type_gauge]
-    row_dln = row_dln[mask_type_gauge]
-    col_dln = col_dln[mask_type_gauge]
-    area_dln = area_dln[mask_type_gauge]
-    literal_type_outlets = literal_type_outlets[mask_type_gauge]
+    # mask_type_gauge = np.where(type_outlets == 0)
+    # x = x[mask_type_gauge]
+    # y = y[mask_type_gauge]
+    # area = area[mask_type_gauge]
+    # code = code[mask_type_gauge]
+    # row_dln = row_dln[mask_type_gauge]
+    # col_dln = col_dln[mask_type_gauge]
+    # area_dln = area_dln[mask_type_gauge]
+    # literal_type_outlets = literal_type_outlets[mask_type_gauge]
 
     ng = x.size
     gauge_pos = np.column_stack((row_dln, col_dln))
 
     # ------------------------------------ Barrage------------------------------
 
-    discontinuities_rank = np.zeros(shape=(flwdir.shape[0], flwdir.shape[1]))
-    discontinuities_code = np.zeros(shape=(flwdir.shape[0], flwdir.shape[1]))
-    discontinuities_pos = np.zeros(shape=(x_hd.size, 2), dtype=np.int32)
-
-    rk_dam = 0
-    rk_input = 0
-    rules = dict(())
-
-    for i in range(x_hd.size):
-
-        if type_outlets_hd[i] == 1:
-            rk_dam = +1
-            rank = rk_dam
-        elif type_outlets_hd[i] == 2:
-            rk_input = +1
-            rank = rk_input
+    ind_hs = []
+    hs_index_by_type = []
+    ni = -1
+    nd = -1
+    for i in range(x.size):
+        if outlet_type[i] != "gauge" and outlet_type[i] != "outlet":
+            ind_hs.append(i)
+        if outlet_type[i] == "dam":
+            nd += 1
+            hs_index_by_type.append(nd)
+        elif outlet_type[i] == "inflow":
+            ni += 1
+            hs_index_by_type.append(ni)
         else:
-            continue
+            hs_index_by_type.append(-99)
 
-        discontinuities_pos[i, :] = np.array([int(row_hd[i]), int(col_hd[i])])
-        discontinuities_rank[row_hd[i], col_hd[i]] = rank
-        discontinuities_code[row_hd[i], col_hd[i]] = type_outlets_hd[i]
+    ind_hs = np.array(ind_hs)
+    hs_index_by_type = np.array(hs_index_by_type)
 
-        rules.update({code_hd[i]: hydraulics_discontinuities[code_hd[i]]["rules"]})
+    # ind_hs = np.where(outlet_type != "gauge" and outlet_type != "outlet")
+    # nhs = len(np.where(outlet_type != "gauge" and outlet_type != "outlet"))
+    ndam = len(np.where(outlet_type == "dam"))
+    ninflow = len(np.where(outlet_type == "inflow"))
 
-    hydraulics_discontinuities = {
-        "discontinuities_name": code_hd,
-        "discontinuities_type": literal_type_outlets_hd,
-        "discontinuities_pos": discontinuities_pos,
-        "discontinuities_rank": np.array(discontinuities_rank),  # nrow,ncol
-        "discontinuities_code": np.array(discontinuities_code),  # nrow,ncol
-        "rules": rules,
-    }
+    hs_index = np.zeros(shape=(flwdir.shape[0], flwdir.shape[1]))
+    # discontinuities_code = np.zeros(shape=(flwdir.shape[0], flwdir.shape[1]))
+    # position_hs = np.zeros(shape=(nhs, 2), dtype=np.int32)
+
+    # rk_dam = 0
+    # rk_input = 0
+    # rules = dict(())
+
+    for i in range(len(ind_hs)):
+        ind = ind_hs[i]
+        # position_hs[i, :] = np.array([int(row_dln[ind]), int(col_dln[ind])])
+        hs_index[row_dln[ind], col_dln[ind]] = ind
+        # type_hs[row_hd[i], col_hd[i]] = type_outlets_hd[i]
+
+        # if type_outlets_hd[i] == 1:
+        #     rk_dam = +1
+        #     rank = rk_dam
+        # elif type_outlets_hd[i] == 2:
+        #     rk_input = +1
+        #     rank = rk_input
+        # else:
+        #     continue
+
+        # rules.update({code_hd[i]: hydraulics_discontinuities[code_hd[i]]["rules"]})
+
+    # hydraulics_discontinuities = {
+    #     "discontinuities_name": code_hd,
+    #     "discontinuities_type": literal_type_outlets_hd,
+    #     # "discontinuities_pos": discontinuities_pos,
+    #     "discontinuities_rank": np.array(discontinuities_rank),  # nrow,ncol
+    #     "discontinuities_code": np.array(discontinuities_code),  # nrow,ncol
+    #     "rules": rules,
+    # }
 
     mesh = {
         "xres": xres,
@@ -825,9 +861,15 @@ def _generate_mesh_from_xy(
         "ng": ng,
         "gauge_pos": gauge_pos,
         "code": code,
+        "outlet_type": outlet_type,
         "area": area,
         "area_dln": area_dln,
-        "hydraulics_discontinuities": hydraulics_discontinuities,
+        # "hydraulics_discontinuities": hydraulics_discontinuities,
+        "hs_index": hs_index,
+        "hs_index_by_type": hs_index_by_type.transpose(),
+        # "nhs": nhs,
+        "ndam": ndam,
+        "ninflow": ninflow,
     }
 
     return mesh
@@ -911,6 +953,7 @@ def _generate_mesh(
     y: np.ndarray | None,
     area: np.ndarray | None,
     code: np.ndarray | None,
+    outlet_type: np.array | None,
     shp_dataset: gpd.GeoDataFrame | None,
     max_depth: int,
     epsg: int | None,
@@ -927,6 +970,7 @@ def _generate_mesh(
             y,
             area,
             code,
+            outlet_type,
             shp_dataset,
             max_depth,
             epsg,

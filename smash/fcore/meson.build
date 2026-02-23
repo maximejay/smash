@@ -65,6 +65,7 @@ mwd_f90_sources = [
     'derived_type/mwd_serr_mu_parameters.f90',
     'derived_type/mwd_serr_sigma_parameters.f90',
     'derived_type/mwd_discontinuities.f90',
+    'derived_type/mwd_hydraulic_structure.f90',
     'derived_type/mwd_setup.f90',
     'derived_type/mwd_sparse_matrix.f90',
     'derived_type/mwd_u_response_data.f90',

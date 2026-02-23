@@ -89,7 +89,18 @@ module mwd_mesh
         integer, dimension(:, :), allocatable :: rowcol_to_ind_ac !$F90W index-array
         integer, dimension(:, :), allocatable :: local_active_cell
         
-        type(discontinuitiesDT) :: hydraulics_discontinuities
+        character(lchar), dimension(:), allocatable :: outlet_type !$F90W char-array
+        
+!~         character(lchar), dimension(:), allocatable :: hydraulic_structure_name !$F90W char-array
+!~         character(lchar), dimension(:), allocatable :: hydraulic_structure_type !$F90W char-array
+        integer, dimension(:,:), allocatable :: hs_index
+        integer, dimension(:), allocatable :: hs_index_by_type
+!~         integer, dimension(:,:), allocatable :: hydraulic_structure_rank
+!~         integer, dimension(:,:), allocatable :: hydraulic_structure_code
+        integer :: ndam
+        integer :: ninflow
+        
+!~         type(discontinuitiesDT) :: hydraulics_discontinuities
 
     end type MeshDT
 
@@ -101,7 +112,7 @@ contains
 
         type(MeshDT), intent(inout) :: this
         type(SetupDT), intent(inout) :: setup
-        integer, intent(in) :: nrow, ncol, npar, ng!, nd
+        integer, intent(in) :: nrow, ncol, npar, ng
 
         this%nrow = nrow
         this%ncol = ncol
@@ -152,6 +163,9 @@ contains
 
         allocate (this%code(this%ng))
         this%code = "..."
+        
+        allocate (this%outlet_type(this%ng))
+        this%outlet_type = "..."
 
         allocate (this%area(this%ng))
         this%area = -99._sp
@@ -165,6 +179,29 @@ contains
         allocate (this%local_active_cell(this%nrow, this%ncol))
         this%local_active_cell = -99
         
+        allocate(this%hs_index(this%nrow,this%ncol))
+        this%hs_index=-99
+        
+        allocate(this%hs_index_by_type(this%ng))
+        this%hs_index_by_type=-99
+        
+!~         allocate(this%hydraulic_structure_name(nhs))
+!~         this%hydraulic_structure_name="..."
+        
+!~         allocate(this%hydraulic_structure_type(nhs))
+!~         this%hydraulic_structure_type="zero"
+        
+!~         allocate(this%hydraulic_structure_pos(nhs,2))
+!~         this%hydraulic_structure_pos=-99
+        
+!~         allocate(this%hydraulic_structure_rank(nrow,ncol))
+!~         this%hydraulic_structure_rank=0
+        
+!~         allocate(this%hydraulic_structure_code(nrow,ncol))
+!~         this%hydraulic_structure_code=0
+        
+        this%ndam=0
+        this%ninflow=0
 
     end subroutine MeshDT_initialise
 

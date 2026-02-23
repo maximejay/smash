@@ -22,7 +22,9 @@ def _round_half_up(x: ListLike) -> np.ndarray:
 
 def _standardize_flwdir_path(flwdir_path: FilePath) -> str:
     if not isinstance(flwdir_path, (str, os.PathLike)):
-        raise TypeError("flwdir_path argument must be of FilePath type (str, PathLike[str])")
+        raise TypeError(
+            "flwdir_path argument must be of FilePath type (str, PathLike[str])"
+        )
 
     flwdir_path = str(flwdir_path)
 
@@ -37,12 +39,16 @@ def _standardize_output_path(output_path: FilePath | None) -> str | None:
         return
 
     if not isinstance(output_path, (str, os.PathLike)):
-        raise TypeError("output_path argument must be of FilePath type (str, PathLike[str])")
+        raise TypeError(
+            "output_path argument must be of FilePath type (str, PathLike[str])"
+        )
 
     output_path = str(output_path)
 
     if not os.path.exists(os.path.dirname(output_path)):
-        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), os.path.dirname(output_path))
+        raise FileNotFoundError(
+            errno.ENOENT, os.strerror(errno.ENOENT), os.path.dirname(output_path)
+        )
 
     return output_path
 
@@ -55,7 +61,9 @@ def _standardize_detect_sink_output_path(output_path: FilePath | None) -> str | 
     return _standardize_output_path(output_path)
 
 
-def _standardize_detect_sink_args(flwdir_path: FilePath, output_path: FilePath | None) -> AnyTuple:
+def _standardize_detect_sink_args(
+    flwdir_path: FilePath, output_path: FilePath | None
+) -> AnyTuple:
     flwdir_path = _standardize_detect_sink_flwdir_path(flwdir_path)
 
     flwdir_dataset = rasterio.open(flwdir_path)
@@ -69,11 +77,15 @@ def _standardize_generate_mesh_flwdir_path(flwdir_path: FilePath) -> str:
     return _standardize_flwdir_path(flwdir_path)
 
 
-def _standardize_generate_mesh_bbox(flwdir_dataset: rasterio.DatasetReader, bbox: ListLike) -> np.ndarray:
+def _standardize_generate_mesh_bbox(
+    flwdir_dataset: rasterio.DatasetReader, bbox: ListLike
+) -> np.ndarray:
     # % Bounding Box (xmin, xmax, ymin, ymax)
 
     if not isinstance(bbox, (list, tuple, np.ndarray)):
-        raise TypeError("bbox argument must be of ListLike type (List, Tuple, np.ndarray)")
+        raise TypeError(
+            "bbox argument must be of ListLike type (List, Tuple, np.ndarray)"
+        )
 
     bbox = np.array(bbox)
 
@@ -162,7 +174,9 @@ def _standardize_generate_mesh_x_y_area(
     area = np.array(area, dtype=np.float32, ndmin=1)
 
     if (x.size != y.size) or (y.size != area.size):
-        raise ValueError(f"Inconsistent sizes between x ({x.size}), y ({y.size}) and area ({area.size})")
+        raise ValueError(
+            f"Inconsistent sizes between x ({x.size}), y ({y.size}) and area ({area.size})"
+        )
 
     xmin, xmax, _, ymin, ymax, _ = _get_transform(flwdir_dataset)
 
@@ -178,20 +192,53 @@ def _standardize_generate_mesh_x_y_area(
     return x, y, area
 
 
-def _standardize_generate_mesh_code(x: np.ndarray, code: str | ListLike | None) -> np.ndarray:
+def _standardize_generate_mesh_code(
+    x: np.ndarray, code: str | ListLike | None
+) -> np.ndarray:
     if code is None:
         code = np.array([f"_c{i}" for i in range(x.size)])
 
     else:
         if not isinstance(code, (str, list, tuple, np.ndarray)):
-            raise TypeError("code argument must be a str or ListLike type (List, Tuple, np.ndarray)")
+            raise TypeError(
+                "code argument must be a str or ListLike type (List, Tuple, np.ndarray)"
+            )
 
         code = np.array(code, ndmin=1)
 
         # % Only check x (y and area already check)
         if code.size != x.size:
-            raise ValueError(f"Inconsistent size between code ({code.size}) and x ({x.size})")
+            raise ValueError(
+                f"Inconsistent size between code ({code.size}) and x ({x.size})"
+            )
     return code
+
+
+def _standardize_generate_mesh_outlet_type(
+    x: np.ndarray, outlet_type: str | ListLike | None
+) -> np.ndarray:
+    if outlet_type is None:
+        outlet_type = np.array(["gauge" for i in range(x.size)])
+
+    else:
+        if not isinstance(outlet_type, (str, list, tuple, np.ndarray)):
+            raise TypeError(
+                "outlet_type argument must be a str or ListLike type (List, Tuple, np.ndarray)"
+            )
+
+        for t in outlet_type:
+            if t not in ["outlet", "gauge", "dam", "inflow"]:
+                raise ValueError(
+                    f"Bad outlet type ({t}). Choice are {['outlet', 'gauge', 'dam', 'inflow']})"
+                )
+        outlet_type = np.array(outlet_type, ndmin=1)
+
+        # % Only check x (y and area already check)
+        if outlet_type.size != x.size:
+            raise ValueError(
+                f"Inconsistent size between outlet_type ({outlet_type.size}) and x ({x.size})"
+            )
+    return outlet_type
 
 
 def _standardize_generate_mesh_shp_path(shp_path: FilePath | None) -> str | None:
@@ -227,7 +274,9 @@ def _standardize_generate_mesh_epsg(epsg: AlphaNumeric | None) -> int | None:
 
     else:
         if not isinstance(epsg, (str, int, float)):
-            raise TypeError("epsg argument must be of AlphaNumeric type (str, int, float)")
+            raise TypeError(
+                "epsg argument must be of AlphaNumeric type (str, int, float)"
+            )
 
         epsg = int(epsg)
 
@@ -256,6 +305,7 @@ def _standardize_generate_mesh_args(
     y: Numeric | ListLike | None,
     area: Numeric | ListLike | None,
     code: str | ListLike | None,
+    outlet_type: str | ListLike | None,
     shp_path: FilePath | None,
     max_depth: Numeric,
     epsg: AlphaNumeric | None,
@@ -275,6 +325,7 @@ def _standardize_generate_mesh_args(
         x, y, area = _standardize_generate_mesh_x_y_area(flwdir_dataset, x, y, area)
 
         code = _standardize_generate_mesh_code(x, code)
+        outlet_type = _standardize_generate_mesh_outlet_type(x, outlet_type)
 
     shp_path = _standardize_generate_mesh_shp_path(shp_path)
 
@@ -293,6 +344,7 @@ def _standardize_generate_mesh_args(
         y,
         area,
         code,
+        outlet_type,
         shp_dataset,
         max_depth,
         epsg,
