@@ -79,6 +79,9 @@ from smash.fcore._mwd_parameters_manipulation import (
 )
 from smash.fcore._mwd_setup import SetupDT
 
+# from smash.fcore._mw_hydr_struct_manipulation import reallocate_hydr_struct
+from smash.fcore._mw_hydr_struct_manipulation import reallocate_dam_struct_data
+
 if TYPE_CHECKING:
     from typing import Any
 
@@ -101,7 +104,6 @@ if TYPE_CHECKING:
     from smash.fcore._mwd_serr_sigma_parameters import SErr_Sigma_ParametersDT
     from smash.fcore._mwd_u_response_data import U_Response_DataDT
     from smash.fcore._mwd_hydraulic_structure import Hydraulic_StructureDT
-    from smash.fcore._mwd_hydraulic_structure import Hydraulic_StructureDT_reallocate
     from smash.util._typing import ListLike, Numeric
 
 __all__ = ["Model"]
@@ -1466,20 +1468,27 @@ class Model:
 
         return self.__copy__()
 
-    def set_hydraulic_structure_data(self, key, values):
+    def set_dam_structure_data(self, key, values):
 
         if key in ["dam_hv", "dam_hq"]:
 
-            Hydraulic_StructureDT_reallocate(
-                self.input_data.hydraulic_structure,
+            reallocate_dam_struct_data(
+                self._input_data.hydraulic_structure.dam_structure,
                 key,
                 self.mesh.ndam,
-                self.mesh.ninflow,
-                self.setup.ntime_step,
                 values.shape[2],
             )
 
-        setattr(self.input_data.hydraulic_structure, key, values)
+        setattr(self._input_data.hydraulic_structure.dam_structure, key, values)
+
+    def get_dam_structure_data(self, key):
+
+        if key in ["dam_hv", "dam_hq"]:
+
+            return getattr(self._input_data.hydraulic_structure.dam_structure, key)
+
+        else:
+            return None
 
     def get_rr_parameters(self, key: str) -> NDArray[np.float32]:
         """

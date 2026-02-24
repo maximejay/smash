@@ -39,7 +39,7 @@ mw_f90_sources = [
     'routine/mw_atmos_statistic.f90',
     'routine/mw_interception_capacity.f90',
     'routine/mw_mask.f90',
-    #'routine/mw_hydraulics_discontinuities.f90',
+    'routine/mw_hydr_struct_manipulation.f90',
     
     'signal_analysis/mw_prcp_indices.f90',
 ]
@@ -64,7 +64,6 @@ mwd_f90_sources = [
     'derived_type/mwd_rr_states.f90',
     'derived_type/mwd_serr_mu_parameters.f90',
     'derived_type/mwd_serr_sigma_parameters.f90',
-    'derived_type/mwd_discontinuities.f90',
     'derived_type/mwd_hydraulic_structure.f90',
     'derived_type/mwd_setup.f90',
     'derived_type/mwd_sparse_matrix.f90',

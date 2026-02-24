@@ -31,11 +31,15 @@
 !%          ``ng``                   Number of gauge
 !%          ``gauge_pos``            Gauge position
 !%          ``code``                 Gauge code
+!%          ``outlet_type``          Outlet type : 'outlet|gauge|dam|inflow'
 !%          ``area``                 Drained area at gauge position                                [m2]
 !%          ``area_dln``             Drained area at gauge position delineated                     [m2]
 !%          ``rowcol_to_ind_ac``     Matrix linking (row, col) couple to active cell indice (k)
 !%          ``local_active_cell``    Mask of local active cells
-!%          ``hydraulics_discontinuities`` Hydraulics discontinuities
+!%          ``hs_index``             Matrix linking the index of the hydr struct vs the list of code
+!%          ``hs_index_by_type``     Vector linking the index of each type of hydr struct vs the list of code
+!%          ``ndam``                 Number of dams
+!%          ``ninflow``              Number of inflows
 !%
 !%      Subroutine
 !%      ----------
@@ -47,7 +51,6 @@ module mwd_mesh
 
     use md_constant !%only: sp
     use mwd_setup !% only: SetupDT
-    use mwd_discontinuities
 
     implicit none
 
@@ -91,16 +94,10 @@ module mwd_mesh
         
         character(lchar), dimension(:), allocatable :: outlet_type !$F90W char-array
         
-!~         character(lchar), dimension(:), allocatable :: hydraulic_structure_name !$F90W char-array
-!~         character(lchar), dimension(:), allocatable :: hydraulic_structure_type !$F90W char-array
         integer, dimension(:,:), allocatable :: hs_index
         integer, dimension(:), allocatable :: hs_index_by_type
-!~         integer, dimension(:,:), allocatable :: hydraulic_structure_rank
-!~         integer, dimension(:,:), allocatable :: hydraulic_structure_code
         integer :: ndam
         integer :: ninflow
-        
-!~         type(discontinuitiesDT) :: hydraulics_discontinuities
 
     end type MeshDT
 
@@ -118,7 +115,6 @@ contains
         this%ncol = ncol
         this%npar = npar
         this%ng = ng
-!~         this%nd = nd
 
         this%xres = -99._sp
         this%yres = -99._sp
@@ -178,28 +174,13 @@ contains
 
         allocate (this%local_active_cell(this%nrow, this%ncol))
         this%local_active_cell = -99
-        
+
         allocate(this%hs_index(this%nrow,this%ncol))
         this%hs_index=-99
-        
+
         allocate(this%hs_index_by_type(this%ng))
         this%hs_index_by_type=-99
-        
-!~         allocate(this%hydraulic_structure_name(nhs))
-!~         this%hydraulic_structure_name="..."
-        
-!~         allocate(this%hydraulic_structure_type(nhs))
-!~         this%hydraulic_structure_type="zero"
-        
-!~         allocate(this%hydraulic_structure_pos(nhs,2))
-!~         this%hydraulic_structure_pos=-99
-        
-!~         allocate(this%hydraulic_structure_rank(nrow,ncol))
-!~         this%hydraulic_structure_rank=0
-        
-!~         allocate(this%hydraulic_structure_code(nrow,ncol))
-!~         this%hydraulic_structure_code=0
-        
+
         this%ndam=0
         this%ninflow=0
 

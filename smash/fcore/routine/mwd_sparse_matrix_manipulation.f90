@@ -21,10 +21,9 @@
 
 module mwd_sparse_matrix_manipulation
 
-    use md_constant, only: sp!, lchar
+    use md_constant, only: sp
     use mwd_mesh, only: MeshDT
     use mwd_sparse_matrix, only: Sparse_MatrixDT, Sparse_MatrixDT_initialise
-!~     use mwd_discontinuities
 
     implicit none
 

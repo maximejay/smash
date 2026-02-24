@@ -4,6 +4,7 @@
 !%      ----------
 !%
 !%      - upstream_discharge
+!%      - hydraulics_structures
 !%      - linear_routing
 !%      - kinematic_wave1d
 !%      - lag0_time_step
@@ -17,7 +18,6 @@ module md_routing_operator
     use mwd_mesh !% only: MeshDT
     use mwd_options !% only: OptionsDT
     use mwd_returns !% only: ReturnsDT
-    use mwd_discontinuities
     use mwd_input_data !% only: Input_DataDT
 
     implicit none
@@ -53,7 +53,7 @@ contains
 
     end subroutine upstream_discharge
     
-    subroutine hydraulics_discontinuities(setup, mesh, input_data, time_step, row, col, k, ac_hd, ac_qz)
+    subroutine hydraulics_structures(setup, mesh, input_data, time_step, row, col, hdam, q)
         implicit none
 
         type(SetupDT), intent(in) :: setup
@@ -61,15 +61,12 @@ contains
         type(Input_DataDT), intent(in) :: input_data
         integer, intent(in) :: row
         integer, intent(in) :: col
-        integer, intent(in) :: k
         integer, intent(in) :: time_step
-        real(sp), dimension(mesh%nac), intent(inout) :: ac_hd
-        real(sp), dimension(mesh%nac, setup%nqz), intent(inout) :: ac_qz
-        
+        real(sp), intent(inout) :: hdam
+        real(sp), intent(inout) :: q
+
         integer ::  ist, index_structure
         character(lchar) :: structure_type
-        
-        !Hydraulics discontiuities
         
         if (mesh%hs_index(row, col)>0) then
             index_structure=mesh%hs_index(row, col)+1
@@ -77,24 +74,23 @@ contains
         else
             structure_type="none"
         end if
-        
+
         select case (structure_type)
-        
+
         case("dam")
-            write(*,*) structure_type
             ist=mesh%hs_index_by_type(index_structure)+1
-            
-            call laminage(setup%dt, input_data%hydraulic_structure%dam_hv(ist,:,:),&
-            &input_data%hydraulic_structure%dam_hq(ist,:,:), ac_qz(k, setup%nqz), ac_hd(k), ac_qz(k, setup%nqz))
-        
+
+            call laminage(setup%dt, input_data%hydraulic_structure%dam_structure%dam_hv(ist,:,:),&
+            &input_data%hydraulic_structure%dam_structure%dam_hq(ist,:,:), hdam, q)
+
         case("inflow")
-            write(*,*) structure_type
             ist=mesh%hs_index_by_type(index_structure)+1
-            ac_qz(k, setup%nqz)=ac_qz(k, setup%nqz) + input_data%hydraulic_structure%inflow(ist,time_step)
-            
+
+            q=q + input_data%hydraulic_structure%inflow_structure%inflow(ist,time_step)
+
         end select
         
-    end subroutine hydraulics_discontinuities
+    end subroutine hydraulics_structures
 
     subroutine linear_routing(dx, dy, dt, flwacc, llr, hlr, qup, q)
 
@@ -290,7 +286,7 @@ contains
         real(sp), dimension(mesh%nac, setup%nqz), intent(inout) :: ac_qz
 
         integer :: i, j, row, col, k, time_step_returns, index_dam, index_input_q
-        real(sp) :: qup, qr
+        real(sp) :: qup
 
         ac_qz(:, setup%nqz) = ac_qtz(:, setup%nqz)
         
@@ -318,8 +314,8 @@ contains
                     call linear_routing(mesh%dx(row, col), mesh%dy(row, col), setup%dt, mesh%flwacc(row, col), &
                     & ac_llr(k), ac_hlr(k), qup, ac_qz(k, setup%nqz))
                     
-                    !Hydraulics discontiuities
-                    call hydraulics_discontinuities(setup, mesh, input_data, time_step, row, col, k, ac_hd, ac_qz)
+                    !Hydraulics structure
+                    call hydraulics_structures(setup, mesh, input_data, time_step, row, col, ac_hd(k), ac_qz(k, setup%nqz))
                     
                     !$AD start-exclude
                     !internal fluxes
@@ -358,8 +354,8 @@ contains
                     call linear_routing(mesh%dx(row, col), mesh%dy(row, col), setup%dt, mesh%flwacc(row, col), &
                     & ac_llr(k), ac_hlr(k), qup, ac_qz(k, setup%nqz))
                     
-                    !Hydraulics discontiuities
-                    call hydraulics_discontinuities(setup, mesh, input_data, time_step, row, col, k, ac_hd, ac_qz)
+                    !Hydraulics structure
+                    call hydraulics_structures(setup, mesh, input_data, time_step, row, col, ac_hd(k), ac_qz(k, setup%nqz))
 
                     !$AD start-exclude
                     !internal fluxes
@@ -504,31 +500,29 @@ contains
     
     !*************************************************************************
     !      PROCEDURE DE LAMINAGE
-    !      npdt = nombre de pas de temps de la chronique de débit entrant
     !      dt = pas de temps de la chronique de débit entrant (secondes)
-    !      n_HV = nombre de points de la relation hauteur/volume (m - Mm3)
-    !      n_HQ = nombre de points de la relation hauteur/débit (m - m3/s)
     !      rel_HV = relation hauteur/volume
     !      rel_HQ = relation hauteur/débit
-    !      x1 = debit entrant (m3/s)
-    !      x2 = cote du plan d'eau (m)
-    !      x3 = debit sortant (m3/s)
+    !      h = water elevation (m)
+    !      q = debit in/out (m3/s)
     !*************************************************************************
-    subroutine laminage(dt, rel_hv, rel_hq, x1, x2, x3)
+    subroutine laminage(dt, rel_hv, rel_hq, h, q)
 
         implicit none
 
-        real, intent(in)    :: dt
+        real, intent(in) :: dt
         real, dimension(:,:), intent(in) :: rel_hv
         real, dimension(:,:), intent(in) :: rel_hq
-        real, intent(inout)    :: x1, x2, x3
-        integer :: i, n_hv,n_hq
-        real zini, z, qbid, volout, volin, volt, zoutmax, qoutmoy
+        real, intent(inout) :: h
+        real, intent(inout) :: q
+        
+        integer :: i, n_hv, n_hq
+        real :: qbid, volout, volin, volt, qoutmoy
         logical :: dt_min
         
         n_hv=size(rel_hv,dim=2)
         n_hq=size(rel_hq,dim=2)
-        z=x2
+        
         qbid=0.
         qoutmoy = 0.
         
@@ -536,52 +530,48 @@ contains
             return
         end if
         
-        !cdl hv ou hq ?? Peut-on avoir des débits nulles dans smash ?
-        if (z .lt. rel_hv(1,1)) then
-            z=rel_hv(1,1)
+        !cdl hv minimum
+        if (h .lt. rel_hv(1,1)) then
+            h=rel_hv(1,1)
         end if
 
-        do i=1,int(dt/60.)             ! boucle sur les pas de temps en minutes
+        do i=1,int(dt/60.) ! boucle sur les pas de temps en minutes
         
-            call h_to_v(n_hv, rel_hv, z,volt)
+            call h_to_v(n_hv, rel_hv, h, volt)
             
-            volin = x1* 60. / 1000000.  ! transformation des m3/s en mm3 par min
+            volin = q* 60. / 1000000. ! transformation des m3/s en mm3 par min
             volt = volt + volin
             
-            call v_to_h(n_hv, rel_hv, volt, z)
-            call h_to_q(n_hq, rel_hq, z, qbid)
+            call v_to_h(n_hv, rel_hv, volt, h)
+            call h_to_q(n_hq, rel_hq, h, qbid)
             
             volout = qbid* 60. / 1000000.
             volt = volt - volout
             
-            call v_to_h(n_hv, rel_hv, volt, z)
+            call v_to_h(n_hv, rel_hv, volt, h)
             
             qoutmoy = qoutmoy + qbid
             
         enddo ! fin de la boucle sur l'heure
-        x2 = z
-        x3 = qoutmoy/(dt/60.)
+
+        q = qoutmoy/(dt/60.)
         
-!~         else ! on n'est pas dans un evenement pluvieux donc on reste au pas de temps horaire
         
-!~             VOLin = x1 / 1000000. * dt ! Transformation des m3/s de l'hydrogramme en Mm3 par pas de temps
+!~             VOLin = q / 1000000. * dt ! Transformation des m3/s de l'hydrogramme en Mm3 par pas de temps
 !~             VOLt = VOLt + VOLin
-           
+       
 !~             CALL V_to_H(n_HV, rel_HV, VOLt, Z)
 !~             CALL H_to_Q(n_HQ, rel_HQ, Z, Qbid)
-           
+       
 !~             VOLout= Qbid / 1000000. * dt
 !~             VOLt = VOLt - VOLout
-           
+       
 !~             CALL V_to_H(n_HV, rel_HV, VOLt, Z)
-           
-!~             x2 = Z
-!~             x3 = Qbid
-           
-!~         endif
+       
+!~             h = Z
+!~             q = Qbid
 
-!~         Zini = x2 
-        
+
         contains
         
         subroutine v_to_h(nv, rel_hv, volume, hauteur)
@@ -648,7 +638,6 @@ contains
 
         end subroutine h_to_q
 
-      
-    END SUBROUTINE laminage
+    end subroutine laminage
 
 end module md_routing_operator
