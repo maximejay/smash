@@ -577,7 +577,7 @@ DEFAULT_BOUNDS_RR_INITIAL_STATES = dict(
             (1e-6, 0.999999),  # % hmsl
             (1e-6, 0.999999),  # % hbsl
             (1e-6, 1e3),  # % hlr
-            (0, np.inf),  # % dam
+            (0.0, np.inf),  # % dam
         ],
     )
 )
