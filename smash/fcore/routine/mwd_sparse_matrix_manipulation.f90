@@ -39,21 +39,21 @@ contains
 !~         real(sp), dimension(:,:) :: rel_hv
 !~         real(sp), dimension(:,:) :: rel_hq
 !~         type(MeshDT), intent(inout) :: mesh
-        
+
 !~         integer, dimension(2) :: shape_rel_hv
 !~         integer, dimension(2) :: shape_rel_hq
 !~         shape_rel_hv=shape(rel_hv)
 !~         shape_rel_hq=shape(rel_hq)
-        
+
 !~         allocate(mesh%hydraulics_discontinuities(row,col)%dam%rel_hv(shape_rel_hv(1),shape_rel_hv(2)))
 !~         allocate(mesh%hydraulics_discontinuities(row,col)%dam%rel_hq(shape_rel_hq(1),shape_rel_hq(2)))
-        
+
 !~         mesh%hydraulics_discontinuities(row,col)%discontinuity_type=hd_type
 !~         mesh%hydraulics_discontinuities(row,col)%coordinates(1)=row
 !~         mesh%hydraulics_discontinuities(row,col)%coordinates(2)=col
 !~         mesh%hydraulics_discontinuities(row,col)%dam%rel_hv=rel_hv
 !~         mesh%hydraulics_discontinuities(row,col)%dam%rel_hq=rel_hq
-    
+
 !~     end subroutine map_dict_hd_dam_to_meshDT
 
     subroutine binary_search(n, vector, vle, ind)

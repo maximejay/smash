@@ -159,7 +159,7 @@ module mwd_setup
         integer, dimension(4) :: neurons = -99
 
     end type SetupDT
-    
+
 contains
 
     subroutine SetupDT_initialise(this, nd)

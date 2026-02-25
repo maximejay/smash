@@ -19,7 +19,6 @@ from smash.factory.mesh._tools import (
     _get_transform,
     _trim_mask_2d,
     _xy_to_rowcol,
-    _trans_dict_hydraulics_discontinuities_to_discontinuitiesDT,
 )
 
 if TYPE_CHECKING:
@@ -129,9 +128,7 @@ def detect_sink(flwdir_path: FilePath, output_path: FilePath | None = None) -> n
     return _detect_sink(*args)
 
 
-def _detect_sink(
-    flwdir_dataset: rasterio.DatasetReader, output_path: str | None
-) -> np.ndarray:
+def _detect_sink(flwdir_dataset: rasterio.DatasetReader, output_path: str | None) -> np.ndarray:
     flwdir = _get_array(flwdir_dataset)
 
     sink = mw_mesh.detect_sink(flwdir)
@@ -424,7 +421,6 @@ def _generate_mesh_from_xy(
     epsg: int,
     area_error_th: float | None,
 ) -> dict:
-
     (xmin, _, xres, _, ymax, yres) = _get_transform(flwdir_dataset)
 
     crs = _get_crs(flwdir_dataset, epsg)
@@ -485,16 +481,12 @@ def _generate_mesh_from_xy(
                 transform=transform,
                 fill=0,
             )
-            mask_dln_win, row_dln_win, col_dln_win, sink_dln[ind] = (
-                mw_mesh.catchment_dln_contour_based(
-                    flwdir_win, mask, row_win, col_win, max_depth
-                )
+            mask_dln_win, row_dln_win, col_dln_win, sink_dln[ind] = mw_mesh.catchment_dln_contour_based(
+                flwdir_win, mask, row_win, col_win, max_depth
             )
         else:
-            mask_dln_win, row_dln_win, col_dln_win, sink_dln[ind] = (
-                mw_mesh.catchment_dln_area_based(
-                    flwdir_win, dx_win, dy_win, row_win, col_win, area[ind], max_depth
-                )
+            mask_dln_win, row_dln_win, col_dln_win, sink_dln[ind] = mw_mesh.catchment_dln_area_based(
+                flwdir_win, dx_win, dy_win, row_win, col_win, area[ind], max_depth
             )
 
         row_dln[ind] = row_dln_win + slice_win[0].start  # % srow
@@ -669,9 +661,7 @@ def _generate_mesh_from_xy(
     return mesh
 
 
-def _generate_mesh_from_bbox(
-    flwdir_dataset: rasterio.DatasetReader, bbox: np.ndarray, epsg: int
-) -> dict:
+def _generate_mesh_from_bbox(flwdir_dataset: rasterio.DatasetReader, bbox: np.ndarray, epsg: int) -> dict:
     (_, _, xres, _, ymax, yres) = _get_transform(flwdir_dataset)
 
     crs = _get_crs(flwdir_dataset, epsg)

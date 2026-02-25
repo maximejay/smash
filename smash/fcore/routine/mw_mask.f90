@@ -9,9 +9,9 @@ module mw_mask
 
     use md_constant, only: sp
     use mwd_mesh, only: MeshDT
-    
+
 contains
-    
+
     recursive subroutine mask_upstream_cells(mesh, row, col, mask)
 
         implicit none

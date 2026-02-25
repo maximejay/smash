@@ -45,7 +45,7 @@ module mwd_input_data
         type(Physio_DataDT) :: physio_data
 
         type(Atmos_DataDT) :: atmos_data
-        
+
         type(Hydraulic_StructureDT) :: hydraulic_structure
 
     end type Input_DataDT
@@ -67,7 +67,7 @@ contains
         call Physio_DataDT_initialise(this%physio_data, setup, mesh)
 
         call Atmos_DataDT_initialise(this%atmos_data, setup, mesh)
-        
+
         call Hydraulic_StructureDT_initialise(this%hydraulic_structure, setup, mesh)
 
     end subroutine Input_DataDT_initialise

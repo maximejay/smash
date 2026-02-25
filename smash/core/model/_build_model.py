@@ -51,9 +51,7 @@ if TYPE_CHECKING:
 
 
 # % TODO: Move this function to a generic common function file
-def _map_dict_to_fortran_derived_type(
-    dct: dict, fdt: FortranDerivedType, skip: ListLike | None = None
-):
+def _map_dict_to_fortran_derived_type(dct: dict, fdt: FortranDerivedType, skip: ListLike | None = None):
     if skip is None:
         skip = []
     for key, value in dct.items():
@@ -81,7 +79,6 @@ def _map_dict_to_fortran_derived_type(
 
 
 def _build_mesh(setup: SetupDT, mesh: MeshDT, mesh_input: dict):
-
     wrap_compute_rowcol_to_ind_ac(mesh)  # % Fortran subroutine
     mesh.local_active_cell = mesh.active_cell.copy()
 
@@ -128,9 +125,9 @@ def _adjust_interception(
     if STRUCTURE_ADJUST_CI[setup.structure] and setup.dt < 86_400:
         print("</> Adjusting GR interception capacity")
         # % Date
-        day_index = pd.date_range(
-            start=setup.start_time, end=setup.end_time, freq=f"{int(setup.dt)}s"
-        )[1:].to_series()
+        day_index = pd.date_range(start=setup.start_time, end=setup.end_time, freq=f"{int(setup.dt)}s")[
+            1:
+        ].to_series()
 
         # % Date to proleptic Gregorian ordinal
         day_index = day_index.apply(lambda x: x.toordinal()).to_numpy()
@@ -204,9 +201,7 @@ def _build_parameters(
         parameters.serr_mu_parameters.values[..., i] = value
 
     # % Build structural error sigma parameters
-    parameters.serr_sigma_parameters.keys = SERR_SIGMA_MAPPING_PARAMETERS[
-        setup.serr_sigma_mapping
-    ]
+    parameters.serr_sigma_parameters.keys = SERR_SIGMA_MAPPING_PARAMETERS[setup.serr_sigma_mapping]
 
     for i, key in enumerate(parameters.serr_sigma_parameters.keys):
         value = DEFAULT_SERR_SIGMA_PARAMETERS[key]

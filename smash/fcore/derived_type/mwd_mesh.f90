@@ -91,10 +91,10 @@ module mwd_mesh
 
         integer, dimension(:, :), allocatable :: rowcol_to_ind_ac !$F90W index-array
         integer, dimension(:, :), allocatable :: local_active_cell
-        
+
         character(lchar), dimension(:), allocatable :: outlet_type !$F90W char-array
-        
-        integer, dimension(:,:), allocatable :: hs_index
+
+        integer, dimension(:, :), allocatable :: hs_index
         integer, dimension(:), allocatable :: hs_index_by_type
         integer :: ndam
         integer :: ninflow
@@ -159,7 +159,7 @@ contains
 
         allocate (this%code(this%ng))
         this%code = "..."
-        
+
         allocate (this%outlet_type(this%ng))
         this%outlet_type = "..."
 
@@ -175,14 +175,14 @@ contains
         allocate (this%local_active_cell(this%nrow, this%ncol))
         this%local_active_cell = -99
 
-        allocate(this%hs_index(this%nrow,this%ncol))
-        this%hs_index=-99
+        allocate (this%hs_index(this%nrow, this%ncol))
+        this%hs_index = -99
 
-        allocate(this%hs_index_by_type(this%ng))
-        this%hs_index_by_type=-99
+        allocate (this%hs_index_by_type(this%ng))
+        this%hs_index_by_type = -99
 
-        this%ndam=0
-        this%ninflow=0
+        this%ndam = 0
+        this%ninflow = 0
 
     end subroutine MeshDT_initialise
 
