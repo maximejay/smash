@@ -50,7 +50,7 @@ jobs:
           CIBW_ARCHS: ${{ matrix.buildplat[2] }}
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=15.0
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           path: ./wheelhouse/*.whl
           name: ${{ matrix.python-version }}-${{ matrix.buildplat[1] }}-${{ matrix.buildplat[2] }}
