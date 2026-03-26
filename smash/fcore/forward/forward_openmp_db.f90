@@ -2092,7 +2092,7 @@ END MODULE MWD_OPTIONS_DIFF
 !%      - ResponseDT_initialise
 !%      - ResponseDT_copy
 MODULE MWD_RESPONSE_DIFF
-!% only: sp
+!% only: sp,lchar
   USE MD_CONSTANT
 !% only: SetupDT
   USE MWD_SETUP
@@ -2107,23 +2107,35 @@ MODULE MWD_RESPONSE_DIFF
 CONTAINS
   SUBROUTINE RESPONSEDT_INITIALISE(this, setup, mesh)
     IMPLICIT NONE
+!~         if (setup%return_opt_grad .eq. "q" .or. setup%return_opt_grad .eq. "qt") then
+!~             deallocate (this%qac)
+!~             allocate (this%qac(mesh%nac, setup%ntime_step))
+!~             this%qac = -99._sp
+!~         end if
     TYPE(RESPONSEDT), INTENT(INOUT) :: this
     TYPE(SETUPDT), INTENT(IN) :: setup
     TYPE(MESHDT), INTENT(IN) :: mesh
     ALLOCATE(this%q(mesh%ng, setup%ntime_step))
     this%q = -99._sp
-!~         When conditionning this allocatation, tapenade force 
+!~         When conditionning this allocatation, tapenade force
 !~         its value to zeros before calling SIMULATION_B...
 !save memory
     ALLOCATE(this%qac(1, 1))
     this%qac = -99._sp
-    IF (setup%return_opt_grad .EQ. 'q' .OR. setup%return_opt_grad .EQ. &
-&       'qe') THEN
+  END SUBROUTINE RESPONSEDT_INITIALISE
+
+  SUBROUTINE RESPONSEDT_REALLOCATE_QAC(this, setup, mesh, q_domain_kind)
+    IMPLICIT NONE
+    TYPE(RESPONSEDT), INTENT(INOUT) :: this
+    TYPE(SETUPDT), INTENT(IN) :: setup
+    TYPE(MESHDT), INTENT(IN) :: mesh
+    CHARACTER(len=lchar) :: q_domain_kind
+    IF (q_domain_kind .EQ. 'q' .OR. q_domain_kind .EQ. 'qt') THEN
       DEALLOCATE(this%qac)
       ALLOCATE(this%qac(mesh%nac, setup%ntime_step))
       this%qac = -99._sp
     END IF
-  END SUBROUTINE RESPONSEDT_INITIALISE
+  END SUBROUTINE RESPONSEDT_REALLOCATE_QAC
 
   SUBROUTINE RESPONSEDT_COPY(this, this_copy)
     IMPLICIT NONE
@@ -2727,6 +2739,7 @@ END MODULE MWD_PARAMETERS_DIFF
 !%          ``log_prior_flag``       Return flag of log_prior
 !%          ``log_h``                Log_h value
 !%          ``log_h_flag``           Return flag of log_h
+!%          ``q_domain_kind``        Return q on the domain for computing the gradient
 !%          ======================== =======================================
 !%
 !%      Subroutine
@@ -2735,7 +2748,7 @@ END MODULE MWD_PARAMETERS_DIFF
 !%      - ReturnsDT_initialise
 !%      - ReturnsDT_copy
 MODULE MWD_RETURNS_DIFF
-!% only: sp
+!% only: sp, lchar
   USE MD_CONSTANT
 !% only: SetupDT
   USE MWD_SETUP
@@ -2745,6 +2758,7 @@ MODULE MWD_RETURNS_DIFF
   USE MWD_RR_STATES_DIFF
   IMPLICIT NONE
 !$F90W index-array
+!$F90W char
   TYPE RETURNSDT
       INTEGER :: nmts
       LOGICAL, DIMENSION(:), ALLOCATABLE :: mask_time_step
@@ -2768,6 +2782,8 @@ MODULE MWD_RETURNS_DIFF
       LOGICAL :: log_h_flag=.false.
       REAL(sp), DIMENSION(:, :, :, :), ALLOCATABLE :: internal_fluxes
       LOGICAL :: internal_fluxes_flag=.false.
+      CHARACTER(len=lchar) :: q_domain_kind='...'
+      LOGICAL :: q_domain_kind_flag=.false.
   END TYPE RETURNSDT
 
 CONTAINS
@@ -2822,6 +2838,8 @@ CONTAINS
         this%internal_fluxes_flag = .true.
         ALLOCATE(this%internal_fluxes(mesh%nrow, mesh%ncol, this%nmts, &
 &       setup%n_internal_fluxes))
+      CASE ('q_domain_kind') 
+        this%q_domain_kind_flag = .true.
       END SELECT
     END DO
   END SUBROUTINE RETURNSDT_INITIALISE
@@ -25911,17 +25929,19 @@ CONTAINS
       output%response%q(i, time_step) = checkpoint_variable%ac_qz(k, &
 &       setup%nqz)
     END DO
-    IF (setup%return_opt_grad .EQ. 'qe') THEN
-      DO i=1,mesh%nac
-        output_d%response%qac(i, time_step) = checkpoint_variable_d%&
-&         ac_qtz(i, setup%nqz)
-      END DO
-    END IF
-    IF (setup%return_opt_grad .EQ. 'q') THEN
-      DO i=1,mesh%nac
-        output_d%response%qac(i, time_step) = checkpoint_variable_d%&
-&         ac_qz(i, setup%nqz)
-      END DO
+    IF (returns%q_domain_kind_flag) THEN
+      IF (returns%q_domain_kind .EQ. 'qt') THEN
+        DO i=1,mesh%nac
+          output_d%response%qac(i, time_step) = checkpoint_variable_d%&
+&           ac_qtz(i, setup%nqz)
+        END DO
+      END IF
+      IF (returns%q_domain_kind .EQ. 'q') THEN
+        DO i=1,mesh%nac
+          output_d%response%qac(i, time_step) = checkpoint_variable_d%&
+&           ac_qz(i, setup%nqz)
+        END DO
+      END IF
     END IF
   END SUBROUTINE STORE_TIME_STEP_D
 
@@ -25952,27 +25972,29 @@ CONTAINS
       k = mesh%rowcol_to_ind_ac(mesh%gauge_pos(i, 1), mesh%gauge_pos(i, &
 &       2))
     END DO
-    IF (setup%return_opt_grad .EQ. 'qe') THEN
-      CALL PUSHCONTROL1B(0)
-    ELSE
-      CALL PUSHCONTROL1B(1)
-    END IF
-    IF (setup%return_opt_grad .EQ. 'q') THEN
-      DO i=mesh%nac,1,-1
-        checkpoint_variable_b%ac_qz(i, setup%nqz) = &
-&         checkpoint_variable_b%ac_qz(i, setup%nqz) + output_b%response%&
-&         qac(i, time_step)
-        output_b%response%qac(i, time_step) = 0.0_4
-      END DO
-    END IF
-    CALL POPCONTROL1B(branch)
-    IF (branch .EQ. 0) THEN
-      DO i=mesh%nac,1,-1
-        checkpoint_variable_b%ac_qtz(i, setup%nqz) = &
-&         checkpoint_variable_b%ac_qtz(i, setup%nqz) + output_b%response&
-&         %qac(i, time_step)
-        output_b%response%qac(i, time_step) = 0.0_4
-      END DO
+    IF (returns%q_domain_kind_flag) THEN
+      IF (returns%q_domain_kind .EQ. 'qt') THEN
+        CALL PUSHCONTROL1B(0)
+      ELSE
+        CALL PUSHCONTROL1B(1)
+      END IF
+      IF (returns%q_domain_kind .EQ. 'q') THEN
+        DO i=mesh%nac,1,-1
+          checkpoint_variable_b%ac_qz(i, setup%nqz) = &
+&           checkpoint_variable_b%ac_qz(i, setup%nqz) + output_b%&
+&           response%qac(i, time_step)
+          output_b%response%qac(i, time_step) = 0.0_4
+        END DO
+      END IF
+      CALL POPCONTROL1B(branch)
+      IF (branch .EQ. 0) THEN
+        DO i=mesh%nac,1,-1
+          checkpoint_variable_b%ac_qtz(i, setup%nqz) = &
+&           checkpoint_variable_b%ac_qtz(i, setup%nqz) + output_b%&
+&           response%qac(i, time_step)
+          output_b%response%qac(i, time_step) = 0.0_4
+        END DO
+      END IF
     END IF
     DO i=mesh%ng,1,-1
       k = mesh%rowcol_to_ind_ac(mesh%gauge_pos(i, 1), mesh%gauge_pos(i, &
@@ -25999,17 +26021,21 @@ CONTAINS
       output%response%q(i, time_step) = checkpoint_variable%ac_qz(k, &
 &       setup%nqz)
     END DO
-    IF (setup%return_opt_grad .EQ. 'qe') THEN
-      DO i=1,mesh%nac
-        output%response%qac(i, time_step) = checkpoint_variable%ac_qtz(i&
-&         , setup%nqz)
-      END DO
-    END IF
-    IF (setup%return_opt_grad .EQ. 'q') THEN
-      DO i=1,mesh%nac
-        output%response%qac(i, time_step) = checkpoint_variable%ac_qz(i&
-&         , setup%nqz)
-      END DO
+    WRITE(*, *) 'q_domain_kind_flag is', returns%q_domain_kind_flag
+    WRITE(*, *) 'and q_domain_kind is ', returns%q_domain_kind
+    IF (returns%q_domain_kind_flag) THEN
+      IF (returns%q_domain_kind .EQ. 'qt') THEN
+        DO i=1,mesh%nac
+          output%response%qac(i, time_step) = checkpoint_variable%ac_qtz&
+&           (i, setup%nqz)
+        END DO
+      END IF
+      IF (returns%q_domain_kind .EQ. 'q') THEN
+        DO i=1,mesh%nac
+          output%response%qac(i, time_step) = checkpoint_variable%ac_qz(&
+&           i, setup%nqz)
+        END DO
+      END IF
     END IF
   END SUBROUTINE STORE_TIME_STEP
 
@@ -29994,6 +30020,8 @@ SUBROUTINE BASE_FORWARD_RUN_D(setup, mesh, input_data, parameters, &
   parameters_d%rr_initial_states%values = 0.0_4
   CALL CONTROL_TO_PARAMETERS_D(setup, mesh, input_data, parameters, &
 &                        parameters_d, options)
+! % Reallocate output%qac if necessary (depend  on returns%q_domain_kind_flag)
+!~     call ResponseDT_reallocate_qac(output%response, setup, mesh, returns%q_domain_kind_flag, returns%q_domain_kind)
 !% Simulation
   CALL SIMULATION_D(setup, mesh, input_data, parameters, parameters_d, &
 &             output, output_d, options, returns)
@@ -30063,6 +30091,8 @@ SUBROUTINE BASE_FORWARD_RUN_B(setup, mesh, input_data, parameters, &
 &               ))
   CALL CONTROL_TO_PARAMETERS(setup, mesh, input_data, parameters, &
 &                      options)
+! % Reallocate output%qac if necessary (depend  on returns%q_domain_kind_flag)
+!~     call ResponseDT_reallocate_qac(output%response, setup, mesh, returns%q_domain_kind_flag, returns%q_domain_kind)
 !% Simulation
   CALL SIMULATION(setup, mesh, input_data, parameters, output, options, &
 &           returns)
@@ -30175,6 +30205,8 @@ SUBROUTINE BASE_FORWARD_RUN_NODIFF(setup, mesh, input_data, parameters, &
 !% Map control to parameters
   CALL CONTROL_TO_PARAMETERS(setup, mesh, input_data, parameters, &
 &                      options)
+! % Reallocate output%qac if necessary (depend  on returns%q_domain_kind_flag)
+!~     call ResponseDT_reallocate_qac(output%response, setup, mesh, returns%q_domain_kind_flag, returns%q_domain_kind)
 !% Simulation
   CALL SIMULATION(setup, mesh, input_data, parameters, output, options, &
 &           returns)

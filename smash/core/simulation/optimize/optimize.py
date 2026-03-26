@@ -26,6 +26,7 @@ from smash.core.simulation.optimize._tools import (
     _inf_norm,
     _net2vect,
     _set_parameters_from_net,
+    _get_parameters_q_b,
 )
 
 # Used inside eval statement
@@ -142,7 +143,11 @@ class Optimize:
         if dct.keys():
             m = max(map(len, list(dct.keys()))) + 1
             return "\n".join(
-                [k.rjust(m) + ": " + repr(type(v)) for k, v in sorted(dct.items()) if not k.startswith("_")]
+                [
+                    k.rjust(m) + ": " + repr(type(v))
+                    for k, v in sorted(dct.items())
+                    if not k.startswith("_")
+                ]
             )
         else:
             return self.__class__.__name__ + "()"
@@ -220,7 +225,11 @@ class BayesianOptimize:
         if dct.keys():
             m = max(map(len, list(dct.keys()))) + 1
             return "\n".join(
-                [k.rjust(m) + ": " + repr(type(v)) for k, v in sorted(dct.items()) if not k.startswith("_")]
+                [
+                    k.rjust(m) + ": " + repr(type(v))
+                    for k, v in sorted(dct.items())
+                    if not k.startswith("_")
+                ]
             )
         else:
             return self.__class__.__name__ + "()"
@@ -292,7 +301,11 @@ class _ScipyOptimizeCallback:
 
 
 def _optimize_fast_wjreg(
-    model: Model, options: OptionsDT, returns: ReturnsDT, optimize_options: dict, return_options: dict
+    model: Model,
+    options: OptionsDT,
+    returns: ReturnsDT,
+    optimize_options: dict,
+    return_options: dict,
 ) -> float:
     if options.comm.verbose:
         print(f"{' ' * 4}FAST WJREG CYCLE 1")
@@ -314,7 +327,15 @@ def _optimize_fast_wjreg(
 
     # Avoid to make a complete copy of model
     wparameters = model._parameters.copy()
-    _apply_optimizer(model, wparameters, options, returns, optimize_options, return_options, callback=None)
+    _apply_optimizer(
+        model,
+        wparameters,
+        options,
+        returns,
+        optimize_options,
+        return_options,
+        callback=None,
+    )
 
     jobs = returns.jobs
     jreg = returns.jreg
@@ -325,7 +346,11 @@ def _optimize_fast_wjreg(
 
 
 def _optimize_lcurve_wjreg(
-    model: Model, options: OptionsDT, returns: ReturnsDT, optimize_options: dict, return_options: dict
+    model: Model,
+    options: OptionsDT,
+    returns: ReturnsDT,
+    optimize_options: dict,
+    return_options: dict,
 ) -> tuple[float, dict]:
     if options.comm.verbose:
         print(f"{' ' * 4}L-CURVE WJREG CYCLE 1")
@@ -346,7 +371,15 @@ def _optimize_lcurve_wjreg(
     jobs_max = returns.jobs
     # % Avoid to make a complete copy of model
     wparameters = model._parameters.copy()
-    _apply_optimizer(model, wparameters, options, returns, optimize_options, return_options, callback=None)
+    _apply_optimizer(
+        model,
+        wparameters,
+        options,
+        returns,
+        optimize_options,
+        return_options,
+        callback=None,
+    )
 
     cost = returns.cost
     jobs_min = returns.jobs
@@ -357,7 +390,9 @@ def _optimize_lcurve_wjreg(
     if (jobs_min / jobs_max) < 0.95 and (jreg_max - jreg_min) > 0.0:
         wjreg_fast = (jobs_max - jobs_min) / jreg_max
         log10_wjreg_fast = np.log10(wjreg_fast)
-        wjreg_range = np.array(10 ** np.arange(log10_wjreg_fast - 0.66, log10_wjreg_fast + 0.67, 0.33))
+        wjreg_range = np.array(
+            10 ** np.arange(log10_wjreg_fast - 0.66, log10_wjreg_fast + 0.67, 0.33)
+        )
     else:
         wjreg_range = np.empty(shape=0)
 
@@ -378,7 +413,13 @@ def _optimize_lcurve_wjreg(
 
         wparameters = model._parameters.copy()
         _apply_optimizer(
-            model, wparameters, options, returns, optimize_options, return_options, callback=None
+            model,
+            wparameters,
+            options,
+            returns,
+            optimize_options,
+            return_options,
+            callback=None,
         )
 
         cost_arr[i + 1] = returns.cost
@@ -476,18 +517,28 @@ def _optimize(
             model, wrap_options, wrap_returns, optimize_options, return_options
         )
         if wrap_options.comm.verbose:
-            print(f"{' ' * 4}FAST WJREG LAST CYCLE. wjreg: {'{:.5e}'.format(wrap_options.cost.wjreg)}")
+            print(
+                f"{' ' * 4}FAST WJREG LAST CYCLE. wjreg: {'{:.5e}'.format(wrap_options.cost.wjreg)}"
+            )
     elif auto_wjreg == "lcurve":
         wrap_options.cost.wjreg, lcurve_wjreg = _optimize_lcurve_wjreg(
             model, wrap_options, wrap_returns, optimize_options, return_options
         )
         if wrap_options.comm.verbose:
-            print(f"{' ' * 4}L-CURVE WJREG LAST CYCLE. wjreg: {'{:.5e}'.format(wrap_options.cost.wjreg)}")
+            print(
+                f"{' ' * 4}L-CURVE WJREG LAST CYCLE. wjreg: {'{:.5e}'.format(wrap_options.cost.wjreg)}"
+            )
     else:
         pass
 
     pyret = _apply_optimizer(
-        model, model._parameters, wrap_options, wrap_returns, optimize_options, return_options, callback
+        model,
+        model._parameters,
+        wrap_options,
+        wrap_returns,
+        optimize_options,
+        return_options,
+        callback,
     )
 
     fret = {}
@@ -512,7 +563,9 @@ def _optimize(
         if "internal_fluxes" in ret:
             ret["internal_fluxes"] = {
                 key: ret["internal_fluxes"][..., i]
-                for i, key in enumerate(STRUCTURE_RR_INTERNAL_FLUXES[model.setup.structure])
+                for i, key in enumerate(
+                    STRUCTURE_RR_INTERNAL_FLUXES[model.setup.structure]
+                )
             }
 
         # % Add time_step to the object
@@ -583,7 +636,9 @@ def _bayesian_optimize(
 
     # % Map cost_options dict to derived type
     # % Control prior handled after
-    _map_dict_to_fortran_derived_type(cost_options, wrap_options.cost, skip=["control_prior"])
+    _map_dict_to_fortran_derived_type(
+        cost_options, wrap_options.cost, skip=["control_prior"]
+    )
 
     # % Map common_options dict to derived type
     _map_dict_to_fortran_derived_type(common_options, wrap_options.comm)
@@ -592,10 +647,18 @@ def _bayesian_optimize(
     _map_dict_to_fortran_derived_type(return_options, wrap_returns)
 
     # % Control prior check
-    _handle_bayesian_optimize_control_prior(model, cost_options["control_prior"], wrap_options)
+    _handle_bayesian_optimize_control_prior(
+        model, cost_options["control_prior"], wrap_options
+    )
 
     pyret = _apply_optimizer(
-        model, model._parameters, wrap_options, wrap_returns, optimize_options, return_options, callback
+        model,
+        model._parameters,
+        wrap_options,
+        wrap_returns,
+        optimize_options,
+        return_options,
+        callback,
     )
 
     # % Fortran returns
@@ -615,7 +678,9 @@ def _bayesian_optimize(
         if "internal_fluxes" in ret:
             ret["internal_fluxes"] = {
                 key: ret["internal_fluxes"][..., i]
-                for i, key in enumerate(STRUCTURE_RR_INTERNAL_FLUXES[model.setup.structure])
+                for i, key in enumerate(
+                    STRUCTURE_RR_INTERNAL_FLUXES[model.setup.structure]
+                )
             }
         # % Add time_step to the object
         if any(k in SIMULATION_RETURN_OPTIONS_TIME_STEP_KEYS for k in ret):
@@ -634,23 +699,51 @@ def _apply_optimizer(
 ) -> dict:
     if wrap_options.optimize.optimizer == "sbs":
         ret = _sbs_optimize(
-            model, parameters, wrap_options, wrap_returns, optimize_options, return_options, callback
+            model,
+            parameters,
+            wrap_options,
+            wrap_returns,
+            optimize_options,
+            return_options,
+            callback,
         )
 
-    elif wrap_options.optimize.optimizer in ["lbfgsb", "nelder-mead", "powell"]:  # scipy optimizers
+    elif wrap_options.optimize.optimizer in [
+        "lbfgsb",
+        "nelder-mead",
+        "powell",
+    ]:  # scipy optimizers
         ret = _scipy_optimize(
-            model, parameters, wrap_options, wrap_returns, optimize_options, return_options, callback
+            model,
+            parameters,
+            wrap_options,
+            wrap_returns,
+            optimize_options,
+            return_options,
+            callback,
         )
 
     elif wrap_options.optimize.optimizer in ADAPTIVE_OPTIMIZER:
         if "net" in optimize_options:
             ret = _ann_adaptive_optimize(
-                model, parameters, wrap_options, wrap_returns, optimize_options, return_options, callback
+                model,
+                parameters,
+                wrap_options,
+                wrap_returns,
+                optimize_options,
+                return_options,
+                callback,
             )
 
         else:
             ret = _adaptive_optimize(
-                model, parameters, wrap_options, wrap_returns, optimize_options, return_options, callback
+                model,
+                parameters,
+                wrap_options,
+                wrap_returns,
+                optimize_options,
+                return_options,
+                callback,
             )
 
     # % Manually deallocate control
@@ -742,7 +835,12 @@ def _adaptive_optimize(
         if callback is not None:
             callback(
                 iopt=Optimize(
-                    {"control_vector": np.copy(x), "cost": model._output.cost, "n_iter": ite, "projg": projg}
+                    {
+                        "control_vector": np.copy(x),
+                        "cost": model._output.cost,
+                        "n_iter": ite,
+                        "projg": projg,
+                    }
                 )
             )
 
@@ -870,7 +968,9 @@ def _ann_adaptive_optimize(
         ret["control_vector"] = np.append(parameters.control.x, _net2vect(net))
 
     if "n_iter" in return_options["keys"]:
-        ret["n_iter"] = istop if istop else optimize_options["termination_crit"]["maxiter"]
+        ret["n_iter"] = (
+            istop if istop else optimize_options["termination_crit"]["maxiter"]
+        )
 
     if "projg" in return_options["keys"]:
         ret["projg"] = net.history["proj_grad"][istop - 1]
@@ -899,8 +999,12 @@ def _scipy_optimize(
 
     # % Set None values for unbounded/semi-unbounded controls to pass to scipy optimize functions
     # which requires None to identify unbounded values
-    l_control = np.where(np.isin(parameters.control.nbd, [0, 3]), None, parameters.control.l)
-    u_control = np.where(np.isin(parameters.control.nbd, [0, 1]), None, parameters.control.u)
+    l_control = np.where(
+        np.isin(parameters.control.nbd, [0, 3]), None, parameters.control.l
+    )
+    u_control = np.where(
+        np.isin(parameters.control.nbd, [0, 1]), None, parameters.control.u
+    )
 
     scipy_callback = _ScipyOptimizeCallback(callback, wrap_options.comm.verbose)
 
@@ -971,7 +1075,9 @@ def _scipy_optimize(
     if "n_iter" in return_options["keys"]:
         ret["n_iter"] = res_optimize.nit
 
-    if (wrap_options.optimize.optimizer in GRADIENT_BASED_OPTIMIZER) and ("projg" in return_options["keys"]):
+    if (wrap_options.optimize.optimizer in GRADIENT_BASED_OPTIMIZER) and (
+        "projg" in return_options["keys"]
+    ):
         ret["projg"] = scipy_callback.projg
 
     if "serr_mu" in return_options["keys"]:
@@ -1008,7 +1114,9 @@ def _sbs_optimize(
     z_wa = np.copy(y_wa)
 
     # % Set np.inf values for unbounded/semi-unbounded controls
-    l_wa = np.where(np.isin(parameters.control.nbd, [0, 3]), -np.inf, parameters.control.l)
+    l_wa = np.where(
+        np.isin(parameters.control.nbd, [0, 3]), -np.inf, parameters.control.l
+    )
     u_wa = np.where(np.isin(parameters.control.nbd, [0, 1]), np.inf, parameters.control.u)
 
     wrap_forward_run(
@@ -1035,7 +1143,9 @@ def _sbs_optimize(
     message = "STOP: TOTAL NO. of ITERATIONS REACHED LIMIT"
 
     if wrap_options.comm.verbose:
-        print(f"{' ' * 4}At iterate {0:>5}    nfg = {nfg:>5}    J = {gx:>.5e}    ddx = {ddx:>4.2f}")
+        print(
+            f"{' ' * 4}At iterate {0:>5}    nfg = {nfg:>5}    J = {gx:>.5e}    ddx = {ddx:>4.2f}"
+        )
 
     for iter in range(1, optimize_options["termination_crit"]["maxiter"] * n + 1):
         dxn = min(dxn, ddx)
@@ -1132,7 +1242,11 @@ def _sbs_optimize(
             iteration = iter // n + (iter % n > 0)
 
             if callback is not None:
-                callback(iopt=Optimize({"control_vector": np.copy(z_wa), "cost": gx, "n_iter": iteration}))
+                callback(
+                    iopt=Optimize(
+                        {"control_vector": np.copy(z_wa), "cost": gx, "n_iter": iteration}
+                    )
+                )
 
             if wrap_options.comm.verbose:
                 print(
@@ -1233,3 +1347,83 @@ def _gradient_free_optimize_problem(
         scipy_callback.cost = model._output.cost
 
     return model._output.cost
+
+
+def _backward_run(
+    model: Model,
+    grad_mode: str = "j",
+    mapping: str = "uniform",
+    optimizer: str | None = None,
+    optimize_options: dict[str, Any] | None = None,
+    cost_options: dict[str, Any] | None = None,
+    common_options: dict[str, Any] | None = None,
+    return_options: dict[str, Any] | None = None,
+    callback: callable | None = None,
+):
+
+    # (
+    #     mapping,
+    #     optimizer,
+    #     optimize_options,
+    #     cost_options,
+    #     common_options,
+    #     return_options,
+    #     callback,
+    # ) = _standardize_optimize_args(
+    #     model,
+    #     mapping="distributed",
+    #     optimizer="lbfgsb",
+    #     optimize_options=optimize_options,
+    #     cost_options=cost_options,
+    #     common_options=common_options,
+    #     return_options=return_options,
+    #     callback=None,
+    # )
+
+    wrap_options = OptionsDT(
+        model.setup,
+        model.mesh,
+        cost_options["njoc"],
+        cost_options["njrc"],
+    )
+
+    wrap_returns = ReturnsDT(
+        model.setup,
+        model.mesh,
+        return_options["nmts"],
+        return_options["fkeys"],
+    )
+
+    # % Map optimize_options dict to derived type
+    _map_dict_to_fortran_derived_type(optimize_options, wrap_options.optimize)
+
+    # % Map cost_options dict to derived type
+    _map_dict_to_fortran_derived_type(
+        cost_options, wrap_options.cost, skip=["control_prior"]
+    )
+
+    # % Map common_options dict to derived type
+    _map_dict_to_fortran_derived_type(common_options, wrap_options.comm)
+
+    # % Map return_options dict to derived type
+    _map_dict_to_fortran_derived_type(return_options, wrap_returns)
+
+    parameters = model._parameters.copy()
+
+    wrap_parameters_to_control(
+        model.setup,
+        model.mesh,
+        model._input_data,
+        parameters,
+        wrap_options,
+    )
+
+    if grad_mode == "j":
+        parameters_b = _get_parameters_b(model, parameters, wrap_options, wrap_returns)
+    elif grad_mode in ["q", "qt"]:
+        parameters_b = _get_parameters_q_b(model, parameters, wrap_options, wrap_returns)
+
+    grad = parameters_b.control.x.copy()
+    name = parameters_b.control.name.copy()
+
+    return grad, name

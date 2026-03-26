@@ -1145,6 +1145,7 @@ DEFAULT_SIMULATION_RETURN_OPTIONS = {
         "jobs": False,
         "jreg": False,
         "lcurve_wjreg": False,
+        "q_domain_kind": "None",
     },
     "bayesian_optimize": {
         "time_step": "all",

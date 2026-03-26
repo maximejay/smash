@@ -27,6 +27,7 @@
 !%          ``log_prior_flag``       Return flag of log_prior
 !%          ``log_h``                Log_h value
 !%          ``log_h_flag``           Return flag of log_h
+!%          ``q_domain_kind``        Return q on the domain for computing the gradient
 !%          ======================== =======================================
 !%
 !%      Subroutine
@@ -37,7 +38,7 @@
 
 module mwd_returns
 
-    use md_constant !% only: sp
+    use md_constant !% only: sp, lchar
     use mwd_setup !% only: SetupDT
     use mwd_mesh !% only: MeshDT
     use mwd_rr_states !%only: RR_StatesDT, RR_StatesDT_initialise
@@ -77,6 +78,9 @@ module mwd_returns
 
         real(sp), dimension(:, :, :, :), allocatable :: internal_fluxes
         logical :: internal_fluxes_flag = .false.
+        
+        character(lchar) :: q_domain_kind = "..." !$F90W char
+        logical :: q_domain_kind_flag = .false.
 
     end type ReturnsDT
 
@@ -149,7 +153,10 @@ contains
             case ("internal_fluxes")
                 this%internal_fluxes_flag = .true.
                 allocate (this%internal_fluxes(mesh%nrow, mesh%ncol, this%nmts, setup%n_internal_fluxes))
-
+            
+            case ("q_domain_kind")
+                this%q_domain_kind_flag = .true.
+                
             end select
 
         end do

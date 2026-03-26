@@ -73,17 +73,22 @@ contains
             output%response%q(i, time_step) = checkpoint_variable%ac_qz(k, setup%nqz)
 
         end do
+        
+        write(*,*) "q_domain_kind_flag is",returns%q_domain_kind_flag
+        write(*,*) "and q_domain_kind is ",returns%q_domain_kind
+        
+        if (returns%q_domain_kind_flag) then
+            if (returns%q_domain_kind == "qt") then
+                do i = 1, mesh%nac
+                    output%response%qac(i, time_step) = checkpoint_variable%ac_qtz(i, setup%nqz)
+                end do
+            end if
 
-        if (setup%return_opt_grad == "qe") then
-            do i = 1, mesh%nac
-                output%response%qac(i, time_step) = checkpoint_variable%ac_qtz(i, setup%nqz)
-            end do
-        end if
-
-        if (setup%return_opt_grad == "q") then
-            do i = 1, mesh%nac
-                output%response%qac(i, time_step) = checkpoint_variable%ac_qz(i, setup%nqz)
-            end do
+            if (returns%q_domain_kind == "q") then
+                do i = 1, mesh%nac
+                    output%response%qac(i, time_step) = checkpoint_variable%ac_qz(i, setup%nqz)
+                end do
+            end if
         end if
 
         !$AD start-exclude

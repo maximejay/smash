@@ -101,7 +101,9 @@ def _standardize_simulation_samples(model: Model, samples: Samples) -> Samples:
             elif key in model.rr_initial_states.keys:
                 low, upp = FEASIBLE_RR_INITIAL_STATES[key]
             else:
-                available_parameters = list(model.rr_parameters.keys) + list(model.rr_initial_states.keys)
+                available_parameters = list(model.rr_parameters.keys) + list(
+                    model.rr_initial_states.keys
+                )
                 raise ValueError(
                     f"Unknown parameter '{key}' in samples attributes. Choices: {available_parameters}"
                 )
@@ -127,10 +129,14 @@ def _standardize_simulation_optimize_options_parameters(
     is_bayesian = "bayesian" in func_name
 
     available_rr_parameters = [
-        key for key in STRUCTURE_RR_PARAMETERS[model.setup.structure] if OPTIMIZABLE_RR_PARAMETERS[key]
+        key
+        for key in STRUCTURE_RR_PARAMETERS[model.setup.structure]
+        if OPTIMIZABLE_RR_PARAMETERS[key]
     ]
     available_rr_initial_states = [
-        key for key in STRUCTURE_RR_STATES[model.setup.structure] if OPTIMIZABLE_RR_INITIAL_STATES[key]
+        key
+        for key in STRUCTURE_RR_STATES[model.setup.structure]
+        if OPTIMIZABLE_RR_INITIAL_STATES[key]
     ]
     available_serr_mu_parameters = [
         key
@@ -144,16 +150,22 @@ def _standardize_simulation_optimize_options_parameters(
     ]
     available_nn_parameters = OPTIMIZABLE_NN_PARAMETERS[max(0, model.setup.n_layers - 1)]
 
-    available_parameters = available_rr_parameters + available_rr_initial_states + available_nn_parameters
+    available_parameters = (
+        available_rr_parameters + available_rr_initial_states + available_nn_parameters
+    )
 
     if is_bayesian:
-        available_parameters.extend(available_serr_mu_parameters + available_serr_sigma_parameters)
+        available_parameters.extend(
+            available_serr_mu_parameters + available_serr_sigma_parameters
+        )
 
     if parameters is None:
         default_parameters = available_rr_parameters + available_nn_parameters
 
         if is_bayesian:
-            default_parameters += available_serr_mu_parameters + available_serr_sigma_parameters
+            default_parameters += (
+                available_serr_mu_parameters + available_serr_sigma_parameters
+            )
 
         parameters = np.array(default_parameters, ndmin=1)
 
@@ -291,7 +303,9 @@ def _standardize_simulation_optimize_options_control_tfm(
 def _standardize_simulation_optimize_options_descriptor(
     model: Model, parameters: np.ndarray, descriptor: dict | None, **kwargs
 ) -> dict:
-    desc_linked_parameters = [key for key in parameters if key in RR_PARAMETERS + RR_STATES]
+    desc_linked_parameters = [
+        key for key in parameters if key in RR_PARAMETERS + RR_STATES
+    ]
     if descriptor is None:
         descriptor = {}
 
@@ -350,7 +364,9 @@ def _standardize_simulation_optimize_options_net(
             # % Check input shape
             net_in = net.layers[0].input_shape
 
-            x_in = (nrow, ncol, nd) if len(net_in) == 3 else (nd,)  # in case of cnn and mlp resp.
+            x_in = (
+                (nrow, ncol, nd) if len(net_in) == 3 else (nd,)
+            )  # in case of cnn and mlp resp.
 
             if net_in != x_in:
                 raise ValueError(
@@ -406,23 +422,31 @@ def _standardize_simulation_optimize_options_learning_rate(
             learning_rate = opt_class().learning_rate
 
         else:
-            raise TypeError("learning_rate optimize_options must be of Numeric type (int, float) or None")
+            raise TypeError(
+                "learning_rate optimize_options must be of Numeric type (int, float) or None"
+            )
 
     return learning_rate
 
 
-def _standardize_simulation_optimize_options_random_state(random_state: Numeric | None, **kwargs) -> int:
+def _standardize_simulation_optimize_options_random_state(
+    random_state: Numeric | None, **kwargs
+) -> int:
     if random_state is None:
         pass
 
     else:
         if not isinstance(random_state, (int, float)):
-            raise TypeError("random_state optimize_options must be of Numeric type (int, float)")
+            raise TypeError(
+                "random_state optimize_options must be of Numeric type (int, float)"
+            )
 
         random_state = int(random_state)
 
         if random_state < 0 or random_state > 4_294_967_295:
-            raise ValueError("random_state optimize_options must be between 0 and 2**32 - 1")
+            raise ValueError(
+                "random_state optimize_options must be between 0 and 2**32 - 1"
+            )
 
     return random_state
 
@@ -459,18 +483,24 @@ def _standardize_simulation_optimize_options_termination_crit(
     return termination_crit
 
 
-def _standardize_simulation_optimize_options_termination_crit_maxiter(maxiter: Numeric, **kwargs) -> int:
+def _standardize_simulation_optimize_options_termination_crit_maxiter(
+    maxiter: Numeric, **kwargs
+) -> int:
     if isinstance(maxiter, (int, float)):
         maxiter = int(maxiter)
         if maxiter < 0:
-            raise ValueError("maxiter termination_crit must be greater than or equal to 0")
+            raise ValueError(
+                "maxiter termination_crit must be greater than or equal to 0"
+            )
     else:
         raise TypeError("maxiter termination_crit must be of Numeric type (int, float)")
 
     return maxiter
 
 
-def _standardize_simulation_optimize_options_termination_crit_xatol(xatol: Numeric, **kwargs) -> float:
+def _standardize_simulation_optimize_options_termination_crit_xatol(
+    xatol: Numeric, **kwargs
+) -> float:
     if isinstance(xatol, (int, float)):
         xatol = float(xatol)
         if xatol <= 0:
@@ -481,7 +511,9 @@ def _standardize_simulation_optimize_options_termination_crit_xatol(xatol: Numer
     return xatol
 
 
-def _standardize_simulation_optimize_options_termination_crit_fatol(fatol: Numeric, **kwargs) -> float:
+def _standardize_simulation_optimize_options_termination_crit_fatol(
+    fatol: Numeric, **kwargs
+) -> float:
     if isinstance(fatol, (int, float)):
         fatol = float(fatol)
         if fatol <= 0:
@@ -492,7 +524,9 @@ def _standardize_simulation_optimize_options_termination_crit_fatol(fatol: Numer
     return fatol
 
 
-def _standardize_simulation_optimize_options_termination_crit_factr(factr: Numeric, **kwargs) -> float:
+def _standardize_simulation_optimize_options_termination_crit_factr(
+    factr: Numeric, **kwargs
+) -> float:
     if isinstance(factr, (int, float)):
         factr = float(factr)
         if factr <= 0:
@@ -503,7 +537,9 @@ def _standardize_simulation_optimize_options_termination_crit_factr(factr: Numer
     return factr
 
 
-def _standardize_simulation_optimize_options_termination_crit_pgtol(pgtol: Numeric, **kwargs) -> float:
+def _standardize_simulation_optimize_options_termination_crit_pgtol(
+    pgtol: Numeric, **kwargs
+) -> float:
     if isinstance(pgtol, (int, float)):
         pgtol = float(pgtol)
         if pgtol <= 0:
@@ -523,7 +559,9 @@ def _standardize_simulation_optimize_options_termination_crit_early_stopping(
         if early_stopping < 0:
             raise ValueError("early_stopping termination_crit must be non-negative")
     else:
-        raise TypeError("early_stopping termination_crit must be of Numeric type (int, float)")
+        raise TypeError(
+            "early_stopping termination_crit must be of Numeric type (int, float)"
+        )
 
     return early_stopping
 
@@ -536,7 +574,9 @@ def _standardize_simulation_optimize_options(
     optimize_options: dict | None,
 ) -> dict:
     if optimize_options is None:
-        optimize_options = dict.fromkeys(SIMULATION_OPTIMIZE_OPTIONS_KEYS[(mapping, optimizer)], None)
+        optimize_options = dict.fromkeys(
+            SIMULATION_OPTIMIZE_OPTIONS_KEYS[(mapping, optimizer)], None
+        )
 
     else:
         if isinstance(optimize_options, dict):
@@ -570,7 +610,9 @@ def _standardize_simulation_optimize_options(
     return optimize_options
 
 
-def _standardize_simulation_cost_options_jobs_cmpt(jobs_cmpt: str | ListLike, **kwargs) -> np.ndarray:
+def _standardize_simulation_cost_options_jobs_cmpt(
+    jobs_cmpt: str | ListLike, **kwargs
+) -> np.ndarray:
     if isinstance(jobs_cmpt, (str, list, tuple, np.ndarray)):
         jobs_cmpt = np.array(jobs_cmpt, ndmin=1)
 
@@ -585,7 +627,9 @@ def _standardize_simulation_cost_options_jobs_cmpt(jobs_cmpt: str | ListLike, **
                 )
 
     else:
-        raise TypeError("jobs_cmpt cost_options must be a str or ListLike type (List, Tuple, np.ndarray)")
+        raise TypeError(
+            "jobs_cmpt cost_options must be a str or ListLike type (List, Tuple, np.ndarray)"
+        )
 
     return jobs_cmpt
 
@@ -598,13 +642,19 @@ def _standardize_simulation_cost_options_wjobs_cmpt(
             wjobs_cmpt = np.ones(shape=jobs_cmpt.size, dtype=np.float32) / jobs_cmpt.size
 
         elif wjobs_cmpt == "lquartile":
-            wjobs_cmpt = np.ones(shape=jobs_cmpt.size, dtype=np.float32) * np.float32(-0.25)
+            wjobs_cmpt = np.ones(shape=jobs_cmpt.size, dtype=np.float32) * np.float32(
+                -0.25
+            )
 
         elif wjobs_cmpt == "median":
-            wjobs_cmpt = np.ones(shape=jobs_cmpt.size, dtype=np.float32) * np.float32(-0.5)
+            wjobs_cmpt = np.ones(shape=jobs_cmpt.size, dtype=np.float32) * np.float32(
+                -0.5
+            )
 
         elif wjobs_cmpt == "uquartile":
-            wjobs_cmpt = np.ones(shape=jobs_cmpt.size, dtype=np.float32) * np.float32(-0.75)
+            wjobs_cmpt = np.ones(shape=jobs_cmpt.size, dtype=np.float32) * np.float32(
+                -0.75
+            )
 
         else:
             raise ValueError(
@@ -622,7 +672,9 @@ def _standardize_simulation_cost_options_wjobs_cmpt(
 
         for i, wjoc in enumerate(wjobs_cmpt):
             if wjoc < 0:
-                raise ValueError(f"Negative component {wjoc:f} at index {i} in wjobs_cmpt cost_options")
+                raise ValueError(
+                    f"Negative component {wjoc:f} at index {i} in wjobs_cmpt cost_options"
+                )
 
     else:
         raise TypeError(
@@ -663,7 +715,9 @@ def _standardize_simulation_cost_options_jobs_cmpt_tfm(
                     f"cost_options. Choices: {JOBS_CMPT_TFM}"
                 )
     else:
-        raise TypeError("jobs_cmpt_tfm cost_options must be a str or ListLike type (List, Tuple, np.ndarray)")
+        raise TypeError(
+            "jobs_cmpt_tfm cost_options must be a str or ListLike type (List, Tuple, np.ndarray)"
+        )
 
     # % No transformation applied to signatures
     avail_tfm_signs = ["keep"]
@@ -680,24 +734,32 @@ def _standardize_simulation_cost_options_jobs_cmpt_tfm(
     return jobs_cmpt_tfm
 
 
-def _standardize_simulation_cost_options_wjreg(wjreg: AlphaNumeric, **kwargs) -> str | float:
+def _standardize_simulation_cost_options_wjreg(
+    wjreg: AlphaNumeric, **kwargs
+) -> str | float:
     if isinstance(wjreg, str):
         if wjreg.lower() in WJREG_ALIAS:
             wjreg = wjreg.lower()
         else:
-            raise ValueError(f"Unknown alias '{wjreg}' for wjreg in cost_options. Choices: {WJREG_ALIAS}")
+            raise ValueError(
+                f"Unknown alias '{wjreg}' for wjreg in cost_options. Choices: {WJREG_ALIAS}"
+            )
 
     elif isinstance(wjreg, (int, float)):
         wjreg = float(wjreg)
         if wjreg < 0:
             raise ValueError("wjreg cost_options must be greater than or equal to 0")
     else:
-        raise TypeError("wjreg cost_options must be of AlphaNumeric type (str, int, float)")
+        raise TypeError(
+            "wjreg cost_options must be of AlphaNumeric type (str, int, float)"
+        )
 
     return wjreg
 
 
-def _standardize_simulation_cost_options_jreg_cmpt(jreg_cmpt: str | ListLike, **kwargs) -> np.ndarray:
+def _standardize_simulation_cost_options_jreg_cmpt(
+    jreg_cmpt: str | ListLike, **kwargs
+) -> np.ndarray:
     if isinstance(jreg_cmpt, (str, list, tuple, np.ndarray)):
         jreg_cmpt = np.array(jreg_cmpt, ndmin=1)
 
@@ -709,7 +771,9 @@ def _standardize_simulation_cost_options_jreg_cmpt(jreg_cmpt: str | ListLike, **
                     f"Unknown component '{jrc}' at index {i} in jreg_cmpt cost_options. Choices: {JREG_CMPT}"
                 )
     else:
-        raise TypeError("jreg_cmpt cost_options must be a str or ListLike type (List, Tuple, np.ndarray)")
+        raise TypeError(
+            "jreg_cmpt cost_options must be a str or ListLike type (List, Tuple, np.ndarray)"
+        )
 
     return jreg_cmpt
 
@@ -722,13 +786,19 @@ def _standardize_simulation_cost_options_wjreg_cmpt(
             wjreg_cmpt = np.ones(shape=jreg_cmpt.size, dtype=np.float32) / jreg_cmpt.size
 
         elif wjreg_cmpt == "lquartile":
-            wjreg_cmpt = np.ones(shape=jreg_cmpt.size, dtype=np.float32) * np.float32(-0.25)
+            wjreg_cmpt = np.ones(shape=jreg_cmpt.size, dtype=np.float32) * np.float32(
+                -0.25
+            )
 
         elif wjreg_cmpt == "median":
-            wjreg_cmpt = np.ones(shape=jreg_cmpt.size, dtype=np.float32) * np.float32(-0.5)
+            wjreg_cmpt = np.ones(shape=jreg_cmpt.size, dtype=np.float32) * np.float32(
+                -0.5
+            )
 
         elif wjreg_cmpt == "uquartile":
-            wjreg_cmpt = np.ones(shape=jreg_cmpt.size, dtype=np.float32) * np.float32(-0.75)
+            wjreg_cmpt = np.ones(shape=jreg_cmpt.size, dtype=np.float32) * np.float32(
+                -0.75
+            )
 
         else:
             raise ValueError(
@@ -746,7 +816,9 @@ def _standardize_simulation_cost_options_wjreg_cmpt(
 
         for i, wjrc in enumerate(wjreg_cmpt):
             if wjrc < 0:
-                raise ValueError(f"Negative component {wjrc:f} at index {i} in wjreg_cmpt cost_options")
+                raise ValueError(
+                    f"Negative component {wjrc:f} at index {i} in wjreg_cmpt cost_options"
+                )
 
     else:
         raise TypeError(
@@ -772,13 +844,17 @@ def _standardize_simulation_cost_options_end_warmup(
                 end_warmup = pd.Timestamp(end_warmup)
 
             except Exception:
-                raise ValueError(f"end_warmup '{end_warmup}' cost_options is an invalid date") from None
+                raise ValueError(
+                    f"end_warmup '{end_warmup}' cost_options is an invalid date"
+                ) from None
 
         elif isinstance(end_warmup, pd.Timestamp):
             pass
 
         else:
-            raise TypeError("end_warmup cost_options must be str or pandas.Timestamp object")
+            raise TypeError(
+                "end_warmup cost_options must be str or pandas.Timestamp object"
+            )
 
         if (end_warmup - st).total_seconds() < 0 or (et - end_warmup).total_seconds() < 0:
             raise ValueError(
@@ -829,7 +905,9 @@ def _standardize_simulation_cost_options_gauge(
                 )
 
     else:
-        raise TypeError("gauge cost_options must be a str or ListLike type (List, Tuple, np.ndarray)")
+        raise TypeError(
+            "gauge cost_options must be a str or ListLike type (List, Tuple, np.ndarray)"
+        )
 
     # % Check that there is observed discharge available when optimizing. No particular issue with a
     # % forward run
@@ -869,7 +947,9 @@ def _standardize_simulation_cost_options_wgauge(
             wgauge = np.ones(shape=gauge.size, dtype=np.float32) * np.float32(-0.75)
 
         else:
-            raise ValueError(f"Unknown alias '{wgauge}' for wgauge cost_options. Choices: {WEIGHT_ALIAS}")
+            raise ValueError(
+                f"Unknown alias '{wgauge}' for wgauge cost_options. Choices: {WEIGHT_ALIAS}"
+            )
 
     elif isinstance(wgauge, (int, float, list, tuple, np.ndarray)):
         wgauge = np.array(wgauge, ndmin=1)
@@ -915,11 +995,15 @@ def _standardize_simulation_cost_options_event_seg(event_seg: dict, **kwargs) ->
 
 # % Some standardization of control_prior must be done with Fortran calls
 # % Otherwise we have to compute control size in Python ...
-def _standardize_simulation_cost_options_control_prior(control_prior: dict | None, **kwargs) -> dict | None:
+def _standardize_simulation_cost_options_control_prior(
+    control_prior: dict | None, **kwargs
+) -> dict | None:
     return control_prior
 
 
-def _standardize_simulation_cost_options(model: Model, func_name: str, cost_options: dict | None) -> dict:
+def _standardize_simulation_cost_options(
+    model: Model, func_name: str, cost_options: dict | None
+) -> dict:
     if cost_options is None:
         cost_options = DEFAULT_SIMULATION_COST_OPTIONS[func_name].copy()
 
@@ -967,7 +1051,10 @@ def _standardize_simulation_common_options_ncpu(ncpu: Numeric) -> int:
     # Parallel computation not supported on Windows
     if platform.system() == "Windows" and ncpu > 1:
         ncpu = 1
-        warnings.warn("Parallel computation is not supported on Windows. ncpu is set to 1", stacklevel=2)
+        warnings.warn(
+            "Parallel computation is not supported on Windows. ncpu is set to 1",
+            stacklevel=2,
+        )
 
     return ncpu
 
@@ -1017,6 +1104,17 @@ def _standardize_simulation_return_options_bool(key: str, value: bool) -> bool:
     return value
 
 
+def _standardize_simulation_return_options_q_domain_kind(q_domain_kind: str):
+    if not isinstance(q_domain_kind, str):
+        raise ValueError(f"q_domain_kind `{q_domain_kind}` must be a str")
+
+    if not q_domain_kind in ["None", "q", "qt"]:
+        raise ValueError(
+            f"Unknown value {q_domain_kind} for q_domain_kind. Choice are ['None','q','qt']"
+        )
+    return q_domain_kind
+
+
 def _standardize_simulation_return_options_time_step(
     model: Model, time_step: str | pd.Timestamp | pd.DatetimeIndex | ListLike
 ) -> pd.DatetimeIndex:
@@ -1025,14 +1123,18 @@ def _standardize_simulation_return_options_time_step(
 
     if isinstance(time_step, str):
         if time_step == "all":
-            time_step = pd.date_range(start=st, end=et, freq=f"{int(model.setup.dt)}s")[1:]
+            time_step = pd.date_range(start=st, end=et, freq=f"{int(model.setup.dt)}s")[
+                1:
+            ]
         else:
             try:
                 # % Pass to list to convert to pd.DatetimeIndex
                 time_step = [pd.Timestamp(time_step)]
 
             except Exception:
-                raise ValueError(f"time_step '{time_step}' return_options is an invalid date") from None
+                raise ValueError(
+                    f"time_step '{time_step}' return_options is an invalid date"
+                ) from None
 
     elif isinstance(time_step, pd.Timestamp):
         # % Pass to list to convert to pd.DatetimeIndex
@@ -1044,7 +1146,9 @@ def _standardize_simulation_return_options_time_step(
             try:
                 time_step[i] = pd.Timestamp(str(date))
             except Exception:
-                raise ValueError(f"Invalid date '{date}' at index {i} in time_step return_options") from None
+                raise ValueError(
+                    f"Invalid date '{date}' at index {i} in time_step return_options"
+                ) from None
     elif isinstance(time_step, pd.DatetimeIndex):
         pass
 
@@ -1067,7 +1171,9 @@ def _standardize_simulation_return_options_time_step(
     return time_step
 
 
-def _standardize_simulation_return_options(model: Model, func_name: str, return_options: dict | None) -> dict:
+def _standardize_simulation_return_options(
+    model: Model, func_name: str, return_options: dict | None
+) -> dict:
     if return_options is None:
         return_options = DEFAULT_SIMULATION_RETURN_OPTIONS[func_name].copy()
     else:
@@ -1091,7 +1197,13 @@ def _standardize_simulation_return_options(model: Model, func_name: str, return_
     for key, value in DEFAULT_SIMULATION_RETURN_OPTIONS[func_name].items():
         return_options.setdefault(key, value)
         if key == "time_step":
-            return_options[key] = _standardize_simulation_return_options_time_step(model, return_options[key])
+            return_options[key] = _standardize_simulation_return_options_time_step(
+                model, return_options[key]
+            )
+        elif key == "q_domain_kind":
+            return_options[key] = _standardize_simulation_return_options_q_domain_kind(
+                return_options[key]
+            )
         else:
             _standardize_simulation_return_options_bool(key, return_options[key])
 
@@ -1176,8 +1288,12 @@ def _standardize_simulation_optimize_options_finalize(
     # % Handle parameters
     # % rr parameters
     optimize_options["rr_parameters"] = np.zeros(shape=model.setup.nrrp, dtype=np.int32)
-    optimize_options["l_rr_parameters"] = np.zeros(shape=model.setup.nrrp, dtype=np.float32)
-    optimize_options["u_rr_parameters"] = np.zeros(shape=model.setup.nrrp, dtype=np.float32)
+    optimize_options["l_rr_parameters"] = np.zeros(
+        shape=model.setup.nrrp, dtype=np.float32
+    )
+    optimize_options["u_rr_parameters"] = np.zeros(
+        shape=model.setup.nrrp, dtype=np.float32
+    )
 
     if descriptor_present:
         optimize_options["rr_parameters_descriptor"] = np.zeros(
@@ -1196,9 +1312,15 @@ def _standardize_simulation_optimize_options_finalize(
                         optimize_options["rr_parameters_descriptor"][j, i] = 1
 
     # % rr initial states
-    optimize_options["rr_initial_states"] = np.zeros(shape=model.setup.nrrs, dtype=np.int32)
-    optimize_options["l_rr_initial_states"] = np.zeros(shape=model.setup.nrrs, dtype=np.float32)
-    optimize_options["u_rr_initial_states"] = np.zeros(shape=model.setup.nrrs, dtype=np.float32)
+    optimize_options["rr_initial_states"] = np.zeros(
+        shape=model.setup.nrrs, dtype=np.int32
+    )
+    optimize_options["l_rr_initial_states"] = np.zeros(
+        shape=model.setup.nrrs, dtype=np.float32
+    )
+    optimize_options["u_rr_initial_states"] = np.zeros(
+        shape=model.setup.nrrs, dtype=np.float32
+    )
     if descriptor_present:
         optimize_options["rr_initial_states_descriptor"] = np.zeros(
             shape=(model.setup.nd, model.setup.nrrs), dtype=np.int32
@@ -1207,8 +1329,12 @@ def _standardize_simulation_optimize_options_finalize(
     for i, key in enumerate(model.rr_initial_states.keys):
         if key in optimize_options["parameters"]:
             optimize_options["rr_initial_states"][i] = 1
-            optimize_options["l_rr_initial_states"][i] = optimize_options["bounds"][key][0]
-            optimize_options["u_rr_initial_states"][i] = optimize_options["bounds"][key][1]
+            optimize_options["l_rr_initial_states"][i] = optimize_options["bounds"][key][
+                0
+            ]
+            optimize_options["u_rr_initial_states"][i] = optimize_options["bounds"][key][
+                1
+            ]
 
             if descriptor_present:
                 for j, desc in enumerate(model.setup.descriptor_name):
@@ -1216,45 +1342,73 @@ def _standardize_simulation_optimize_options_finalize(
                         optimize_options["rr_initial_states_descriptor"][j, i] = 1
 
     # % nn parameters
-    optimize_options["nn_parameters"] = np.zeros(shape=len(NN_PARAMETERS_KEYS), dtype=np.int32)
+    optimize_options["nn_parameters"] = np.zeros(
+        shape=len(NN_PARAMETERS_KEYS), dtype=np.int32
+    )
 
     for i, key in enumerate(NN_PARAMETERS_KEYS):
         if key in optimize_options["parameters"]:
             optimize_options["nn_parameters"][i] = 1
 
     # % serr mu parameters
-    optimize_options["serr_mu_parameters"] = np.zeros(shape=model.setup.nsep_mu, dtype=np.int32)
-    optimize_options["l_serr_mu_parameters"] = np.zeros(shape=model.setup.nsep_mu, dtype=np.float32)
-    optimize_options["u_serr_mu_parameters"] = np.zeros(shape=model.setup.nsep_mu, dtype=np.float32)
+    optimize_options["serr_mu_parameters"] = np.zeros(
+        shape=model.setup.nsep_mu, dtype=np.int32
+    )
+    optimize_options["l_serr_mu_parameters"] = np.zeros(
+        shape=model.setup.nsep_mu, dtype=np.float32
+    )
+    optimize_options["u_serr_mu_parameters"] = np.zeros(
+        shape=model.setup.nsep_mu, dtype=np.float32
+    )
 
     for i, key in enumerate(model.serr_mu_parameters.keys):
         if key in optimize_options["parameters"]:
             optimize_options["serr_mu_parameters"][i] = 1
-            optimize_options["l_serr_mu_parameters"][i] = optimize_options["bounds"][key][0]
-            optimize_options["u_serr_mu_parameters"][i] = optimize_options["bounds"][key][1]
+            optimize_options["l_serr_mu_parameters"][i] = optimize_options["bounds"][key][
+                0
+            ]
+            optimize_options["u_serr_mu_parameters"][i] = optimize_options["bounds"][key][
+                1
+            ]
 
     # % serr sigma parameters
-    optimize_options["serr_sigma_parameters"] = np.zeros(shape=model.setup.nsep_sigma, dtype=np.int32)
-    optimize_options["l_serr_sigma_parameters"] = np.zeros(shape=model.setup.nsep_sigma, dtype=np.float32)
-    optimize_options["u_serr_sigma_parameters"] = np.zeros(shape=model.setup.nsep_sigma, dtype=np.float32)
+    optimize_options["serr_sigma_parameters"] = np.zeros(
+        shape=model.setup.nsep_sigma, dtype=np.int32
+    )
+    optimize_options["l_serr_sigma_parameters"] = np.zeros(
+        shape=model.setup.nsep_sigma, dtype=np.float32
+    )
+    optimize_options["u_serr_sigma_parameters"] = np.zeros(
+        shape=model.setup.nsep_sigma, dtype=np.float32
+    )
 
     for i, key in enumerate(model.serr_sigma_parameters.keys):
         if key in optimize_options["parameters"]:
             optimize_options["serr_sigma_parameters"][i] = 1
-            optimize_options["l_serr_sigma_parameters"][i] = optimize_options["bounds"][key][0]
-            optimize_options["u_serr_sigma_parameters"][i] = optimize_options["bounds"][key][1]
+            optimize_options["l_serr_sigma_parameters"][i] = optimize_options["bounds"][
+                key
+            ][0]
+            optimize_options["u_serr_sigma_parameters"][i] = optimize_options["bounds"][
+                key
+            ][1]
 
     return optimize_options
 
 
-def _standardize_simulation_cost_options_finalize(model: Model, func_name: str, cost_options: dict) -> dict:
+def _standardize_simulation_cost_options_finalize(
+    model: Model, func_name: str, cost_options: dict
+) -> dict:
     is_bayesian = "bayesian" in func_name
 
     if is_bayesian:
         cost_options["bayesian"] = True
 
-    cost_options["njoc"] = cost_options["jobs_cmpt"].size if "jobs_cmpt" in cost_options else 0
-    cost_options["njrc"] = cost_options["jreg_cmpt"].size if "jreg_cmpt" in cost_options else 0
+    cost_options["njoc"] = (
+        cost_options["jobs_cmpt"].size if "jobs_cmpt" in cost_options else 0
+    )
+    cost_options["njrc"] = (
+        cost_options["jreg_cmpt"].size if "jreg_cmpt" in cost_options else 0
+    )
 
     if any(f.startswith("E") for f in cost_options.get("jobs_cmpt", [])):
         info_event = _mask_event(model=model, **cost_options["event_seg"])
@@ -1286,7 +1440,9 @@ def _standardize_simulation_cost_options_finalize(model: Model, func_name: str, 
 
     # % end_warmup
     st = pd.Timestamp(model.setup.start_time)
-    cost_options["end_warmup"] = int((cost_options["end_warmup"] - st).total_seconds() / model.setup.dt)
+    cost_options["end_warmup"] = int(
+        (cost_options["end_warmup"] - st).total_seconds() / model.setup.dt
+    )
 
     return cost_options
 
@@ -1295,7 +1451,9 @@ def _standardize_simulation_return_options_finalize(model: Model, return_options
     st = pd.Timestamp(model.setup.start_time)
 
     mask_time_step = np.zeros(shape=model.setup.ntime_step, dtype=bool)
-    time_step_to_returns_time_step = np.zeros(shape=model.setup.ntime_step, dtype=np.int32) - np.int32(99)
+    time_step_to_returns_time_step = np.zeros(
+        shape=model.setup.ntime_step, dtype=np.int32
+    ) - np.int32(99)
 
     for date in return_options["time_step"]:
         ind = int((date - st).total_seconds() / model.setup.dt) - 1
@@ -1331,13 +1489,24 @@ def _standardize_simulation_return_options_finalize(model: Model, return_options
     pop_keys = [
         k
         for k in return_options
-        if k not in ["nmts", "mask_time_step", "time_step_to_returns_time_step", "time_step", "fkeys", "keys"]
+        if k
+        not in [
+            "nmts",
+            "mask_time_step",
+            "time_step_to_returns_time_step",
+            "q_domain_kind",
+            "time_step",
+            "fkeys",
+            "keys",
+        ]
     ]
     for key in pop_keys:
         return_options.pop(key)
 
 
-def _standardize_default_optimize_options_args(mapping: str, optimizer: str | None) -> AnyTuple:
+def _standardize_default_optimize_options_args(
+    mapping: str, optimizer: str | None
+) -> AnyTuple:
     mapping = _standardize_simulation_mapping(mapping)
 
     optimizer = _standardize_simulation_optimizer(mapping, optimizer)
@@ -1345,5 +1514,7 @@ def _standardize_default_optimize_options_args(mapping: str, optimizer: str | No
     return (mapping, optimizer)
 
 
-def _standardize_default_bayesian_optimize_options_args(mapping: str, optimizer: str | None) -> AnyTuple:
+def _standardize_default_bayesian_optimize_options_args(
+    mapping: str, optimizer: str | None
+) -> AnyTuple:
     return _standardize_default_optimize_options_args(mapping, optimizer)

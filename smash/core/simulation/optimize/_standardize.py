@@ -30,7 +30,9 @@ def _standardize_bayesian_optimize_mapping(mapping: str) -> str:
 
     if isinstance(mapping, str):
         if mapping.lower() not in avail_mapping:
-            raise ValueError(f"Invalid mapping '{mapping}' for bayesian optimize. Choices: {avail_mapping}")
+            raise ValueError(
+                f"Invalid mapping '{mapping}' for bayesian optimize. Choices: {avail_mapping}"
+            )
     else:
         raise TypeError("mapping argument must be a str")
 
@@ -89,7 +91,9 @@ def _standardize_optimize_args(
     )
 
     # % Finalize optimize options
-    _standardize_simulation_optimize_options_finalize(model, mapping, optimizer, optimize_options)
+    _standardize_simulation_optimize_options_finalize(
+        model, mapping, optimizer, optimize_options
+    )
 
     cost_options = _standardize_simulation_cost_options(model, func_name, cost_options)
 
@@ -98,7 +102,9 @@ def _standardize_optimize_args(
 
     common_options = _standardize_simulation_common_options(common_options)
 
-    return_options = _standardize_simulation_return_options(model, func_name, return_options)
+    return_options = _standardize_simulation_return_options(
+        model, func_name, return_options
+    )
 
     # % Finalize return_options
     _standardize_simulation_return_options_finalize(model, return_options)
@@ -143,10 +149,14 @@ def _standardize_bayesian_optimize_args(
 
     common_options = _standardize_simulation_common_options(common_options)
 
-    return_options = _standardize_simulation_return_options(model, func_name, return_options)
+    return_options = _standardize_simulation_return_options(
+        model, func_name, return_options
+    )
 
     # % Finalize optimize options
-    _standardize_simulation_optimize_options_finalize(model, mapping, optimizer, optimize_options)
+    _standardize_simulation_optimize_options_finalize(
+        model, mapping, optimizer, optimize_options
+    )
 
     # % Finalize cost_options
     _standardize_simulation_cost_options_finalize(model, func_name, cost_options)
@@ -165,3 +175,28 @@ def _standardize_bayesian_optimize_args(
         return_options,
         callback,
     )
+
+
+def _standardize_grad_mode(grad_mode, return_options):
+
+    if not isinstance(grad_mode, str):
+        raise ValueError(
+            f"grade_mode option `{grad_mode}` must be a string but receive {type(grad_mode)}"
+        )
+
+    elif grad_mode not in ["j", "q", "qt"]:
+        raise ValueError(
+            f"Unknown grade_mode value `{grad_mode}`. Choice are [ j | q | qt ]."
+        )
+
+    if return_options is None:
+        return_options = {}
+
+    if grad_mode == "q":
+        return_options.update({"q_domain_kind": "q"})
+    elif grad_mode == "qt":
+        return_options.update({"q_domain_kind": "qt"})
+    elif grad_mode == "j":
+        return_options.update({"q_domain_kind": "None"})
+
+    return grad_mode, return_options
