@@ -73,10 +73,7 @@ contains
             output%response%q(i, time_step) = checkpoint_variable%ac_qz(k, setup%nqz)
 
         end do
-        
-        write(*,*) "q_domain_kind_flag is",returns%q_domain_kind_flag
-        write(*,*) "and q_domain_kind is ",returns%q_domain_kind
-        
+
         if (returns%q_domain_kind_flag) then
             if (returns%q_domain_kind == "qt") then
                 do i = 1, mesh%nac

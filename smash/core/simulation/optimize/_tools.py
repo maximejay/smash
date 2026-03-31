@@ -46,7 +46,9 @@ def _get_control_info(
     # % Map cost_options dict to derived type
     _map_dict_to_fortran_derived_type(cost_options, wrap_options.cost)
 
-    wrap_parameters_to_control(model.setup, model.mesh, model._input_data, model._parameters, wrap_options)
+    wrap_parameters_to_control(
+        model.setup, model.mesh, model._input_data, model._parameters, wrap_options
+    )
 
     ret = {}
 
@@ -95,7 +97,9 @@ def _merge_net_control(ret: dict, optimize_options: dict):
                     for row in range(layer.weight_shape[0])
                 )
 
-                x_net_name.extend(f"reg_bias_{i + 1}-{col + 1}" for col in range(layer.bias_shape[-1]))
+                x_net_name.extend(
+                    f"reg_bias_{i + 1}-{col + 1}" for col in range(layer.bias_shape[-1])
+                )
 
                 x_net_size += np.prod(layer.weight_shape) + layer.bias_shape[-1]
 
@@ -150,7 +154,9 @@ def _set_net_from_vect(vect: np.ndarray, net: Net):
 
     for layer in net.layers:
         if layer.trainable:
-            layer.weight = vect[ind : ind + layer.weight.size].reshape(layer.weight_shape, order="F")
+            layer.weight = vect[ind : ind + layer.weight.size].reshape(
+                layer.weight_shape, order="F"
+            )
             ind += layer.weight.size
 
             layer.bias = vect[ind : ind + layer.bias.size].reshape(layer.bias_shape)
@@ -205,14 +211,18 @@ def _set_control(
     # % Map cost_options dict to derived type
     _map_dict_to_fortran_derived_type(cost_options, wrap_options.cost)
 
-    wrap_parameters_to_control(model.setup, model.mesh, model._input_data, model._parameters, wrap_options)
+    wrap_parameters_to_control(
+        model.setup, model.mesh, model._input_data, model._parameters, wrap_options
+    )
 
     # % Set control values
     net = optimize_options.get("net", None)  # net=None if not using 'ann' mapping
     # Check consistency of control vector size
     # (Could not fully standardize 'control_vector' before initializing model._parameters.control)
     trainable_params_net = (
-        0 if net is None else sum([layer.n_params() for layer in net.layers if layer.trainable])
+        0
+        if net is None
+        else sum([layer.n_params() for layer in net.layers if layer.trainable])
     )
     control_size = model._parameters.control.n + trainable_params_net
     if control_vector.size != control_size:
@@ -243,7 +253,9 @@ def _set_control(
             if hasattr(layer, "_initialize"):
                 layer._initialize(None)
 
-        _set_net_from_vect(control_vector[ind:], net)  # set weight and bias with control values
+        _set_net_from_vect(
+            control_vector[ind:], net
+        )  # set weight and bias with control values
 
         l_desc = model._input_data.physio_data.l_descriptor
         u_desc = model._input_data.physio_data.u_descriptor
@@ -254,7 +266,9 @@ def _set_control(
         if net.layers[0].layer_name() == "Dense":
             desc = desc.reshape(-1, desc.shape[-1])
 
-        _set_parameters_from_net(net, desc, optimize_options["parameters"], model._parameters)
+        _set_parameters_from_net(
+            net, desc, optimize_options["parameters"], model._parameters
+        )
 
     # Manually dealloc the control
     model._parameters.control.dealloc()
@@ -298,8 +312,12 @@ def _get_lcurve_wjreg_best(
     return (distance, wjreg)
 
 
-def _handle_bayesian_optimize_control_prior(model: Model, control_prior: dict, options: OptionsDT):
-    wrap_parameters_to_control(model.setup, model.mesh, model._input_data, model._parameters, options)
+def _handle_bayesian_optimize_control_prior(
+    model: Model, control_prior: dict, options: OptionsDT
+):
+    wrap_parameters_to_control(
+        model.setup, model.mesh, model._input_data, model._parameters, options
+    )
 
     if control_prior is None:
         control_prior = {}
@@ -382,7 +400,6 @@ def _get_parameters_q_b(
 ) -> ParametersDT:
     parameters_b = parameters.copy()
     output_b = model._output.copy()
-    wrap_options_b = wrap_options.copy()
 
     output_b.qt = np.float32(1)
 
@@ -395,7 +412,6 @@ def _get_parameters_q_b(
         model._output,
         output_b,
         wrap_options,
-        wrap_options_b,
         wrap_returns,
     )
 

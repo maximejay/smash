@@ -78,7 +78,7 @@ module mwd_returns
 
         real(sp), dimension(:, :, :, :), allocatable :: internal_fluxes
         logical :: internal_fluxes_flag = .false.
-        
+
         character(lchar) :: q_domain_kind = "..." !$F90W char
         logical :: q_domain_kind_flag = .false.
 
@@ -153,10 +153,10 @@ contains
             case ("internal_fluxes")
                 this%internal_fluxes_flag = .true.
                 allocate (this%internal_fluxes(mesh%nrow, mesh%ncol, this%nmts, setup%n_internal_fluxes))
-            
+
             case ("q_domain_kind")
                 this%q_domain_kind_flag = .true.
-                
+
             end select
 
         end do

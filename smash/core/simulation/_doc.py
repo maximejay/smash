@@ -742,11 +742,26 @@ RETURN_OPTIONS_BASE_DOC = {
     ),
     "q_domain_kind": (
         """
-        `bool`, default False
+        `str`, default is `...`
         """,
         """
-        Whether to return the gradient of dq/dp or dqt/dp or dq/dj
-        from the Model object using the `Model.get_serr_sigma` method.
+        Whether to return the gradient of dJ/dX or dQ/dX or dQt/dX, where `X` are the model
+        control (parameters or states), J the cost function, Q the discharges routed over the
+        drainage area, Qt the discharge produced by the hydrological module for every cells.
+        Choice are [`j`, `q`, `qt`].
+
+        If `qt` or `q`, the gradient is returned following the diff rule
+        base_forward_run_q(parameters.control.x)\\(output.response.qac) where
+        output.response.qac store either the elementaries discharges produced by the
+        hydrological module (one cell, no routing) or the discharges routed over the drainage area.
+
+        If `j`, the gradient is returned following the diff rule
+        base_forward_run_q(parameters.control.x)\\(output.cost) where output.cost is the
+        cost computed with the cost function.
+
+        Remarks: if the routing module is set to `zero`, output.response.qac will store
+        the elementaries discharges produced by the hydrological module, thus the
+        gradient returned with `qt` or `q` will be equal.
         """,
     ),
 }

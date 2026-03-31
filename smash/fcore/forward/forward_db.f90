@@ -24914,8 +24914,6 @@ CONTAINS
       output%response%q(i, time_step) = checkpoint_variable%ac_qz(k, &
 &       setup%nqz)
     END DO
-    WRITE(*, *) 'q_domain_kind_flag is', returns%q_domain_kind_flag
-    WRITE(*, *) 'and q_domain_kind is ', returns%q_domain_kind
     IF (returns%q_domain_kind_flag) THEN
       IF (returns%q_domain_kind .EQ. 'qt') THEN
         DO i=1,mesh%nac

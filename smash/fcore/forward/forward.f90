@@ -25,9 +25,6 @@ subroutine base_forward_run(setup, mesh, input_data, parameters, output, options
     !% Map control to parameters
     call control_to_parameters(setup, mesh, input_data, parameters, options)
 
-    ! % Reallocate output%qac if necessary (depend  on returns%q_domain_kind_flag)
-!~     call ResponseDT_reallocate_qac(output%response, setup, mesh, returns%q_domain_kind_flag, returns%q_domain_kind)
-    
     !% Simulation
     call simulation(setup, mesh, input_data, parameters, output, options, returns)
 
@@ -62,7 +59,7 @@ subroutine base_forward_run_q(setup, mesh, input_data, parameters, output, optio
 
     !% Map control to parameters
     call control_to_parameters(setup, mesh, input_data, parameters, options)
-    
+
     !% Simulation
     call simulation(setup, mesh, input_data, parameters, output, options, returns)
 

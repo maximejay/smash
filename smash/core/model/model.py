@@ -57,14 +57,14 @@ from smash.core.simulation.estimate._standardize import (
 from smash.core.simulation.estimate.estimate import _multiset_estimate
 from smash.core.simulation.optimize._standardize import (
     _standardize_bayesian_optimize_args,
-    _standardize_optimize_args,
     _standardize_grad_mode,
+    _standardize_optimize_args,
 )
 from smash.core.simulation.optimize._tools import _set_control
 from smash.core.simulation.optimize.optimize import (
+    _backward_run,
     _bayesian_optimize,
     _optimize,
-    _backward_run,
 )
 from smash.core.simulation.run._standardize import _standardize_forward_run_args
 from smash.core.simulation.run.run import _forward_run
@@ -154,13 +154,6 @@ class Model:
                 See the :ref:`Routing Module <math_num_documentation.forward_structure.routing_module>`
                 section
 
-        return_opt_grad : `str`, default `none`
-            Name of the optional gradient to return. If not `none` smash will return inside
-            the variable response.qac the gradient following the diff rule
-            base_forward_run_q(parameters.control.x)\\(output.response.qac)
-            where output.response.qac store the elementaries discharges produced by the
-            hydrological module, if `return_opt_grad=='qe'`, or the domain discharges
-            produced by the routing module, if `return_opt_grad=='q'`.
 
         hidden_neuron : `int` or `list[int]`, default 16
             Number of neurons in hidden layer(s) of the parameterization neural network
@@ -459,9 +452,7 @@ class Model:
 
             _map_dict_to_fortran_derived_type(setup, self.setup)
 
-            self.mesh = MeshDT(
-                self.setup, mesh["nrow"], mesh["ncol"], mesh["npar"], mesh["ng"]
-            )
+            self.mesh = MeshDT(self.setup, mesh["nrow"], mesh["ncol"], mesh["npar"], mesh["ng"])
 
             _map_dict_to_fortran_derived_type(mesh, self.mesh)
 
@@ -509,9 +500,7 @@ class Model:
                 continue
             value = getattr(self, attr)
 
-            sub_attr_list = [
-                sub_attr for sub_attr in dir(value) if _valid_attr(value, sub_attr)
-            ]
+            sub_attr_list = [sub_attr for sub_attr in dir(value) if _valid_attr(value, sub_attr)]
 
             # % Do not print too much attributes
             if len(sub_attr_list) > 4:
@@ -2384,9 +2373,7 @@ class Model:
         True
         """
 
-        serr_mu = np.zeros(
-            shape=(self.mesh.ng, self.setup.ntime_step), order="F", dtype=np.float32
-        )
+        serr_mu = np.zeros(shape=(self.mesh.ng, self.setup.ntime_step), order="F", dtype=np.float32)
         wrap_get_serr_mu(self.setup, self.mesh, self._parameters, self._output, serr_mu)
         return serr_mu
 
@@ -2450,12 +2437,8 @@ class Model:
         >>> np.allclose(sigma, sigma2)
         True
         """
-        serr_sigma = np.zeros(
-            shape=(self.mesh.ng, self.setup.ntime_step), order="F", dtype=np.float32
-        )
-        wrap_get_serr_sigma(
-            self.setup, self.mesh, self._parameters, self._output, serr_sigma
-        )
+        serr_sigma = np.zeros(shape=(self.mesh.ng, self.setup.ntime_step), order="F", dtype=np.float32)
+        wrap_get_serr_sigma(self.setup, self.mesh, self._parameters, self._output, serr_sigma)
         return serr_sigma
 
     def get_nn_parameters_weight(self) -> list[NDArray[np.float32]]:
@@ -2503,8 +2486,7 @@ class Model:
         """
 
         return [
-            getattr(self._parameters.nn_parameters, f"weight_{i + 1}")
-            for i in range(self.setup.n_layers)
+            getattr(self._parameters.nn_parameters, f"weight_{i + 1}") for i in range(self.setup.n_layers)
         ]
 
     def get_nn_parameters_bias(self) -> list[NDArray[np.float32]]:
@@ -2546,10 +2528,7 @@ class Model:
         The output contains a list of bias values for trainable layers.
         """
 
-        return [
-            getattr(self._parameters.nn_parameters, f"bias_{i + 1}")
-            for i in range(self.setup.n_layers)
-        ]
+        return [getattr(self._parameters.nn_parameters, f"bias_{i + 1}") for i in range(self.setup.n_layers)]
 
     def set_nn_parameters_weight(
         self,
@@ -2636,9 +2615,7 @@ class Model:
                 np.random.seed(random_state)
 
             for i in range(self.setup.n_layers):
-                (n_neuron, n_in) = getattr(
-                    self._parameters.nn_parameters, f"weight_{i + 1}"
-                ).shape
+                (n_neuron, n_in) = getattr(self._parameters.nn_parameters, f"weight_{i + 1}").shape
                 setattr(
                     self._parameters.nn_parameters,
                     f"weight_{i + 1}",
@@ -2730,9 +2707,7 @@ class Model:
                 np.random.seed(random_state)
 
             for i in range(self.setup.n_layers):
-                n_neuron = getattr(self._parameters.nn_parameters, f"bias_{i + 1}").shape[
-                    0
-                ]
+                n_neuron = getattr(self._parameters.nn_parameters, f"bias_{i + 1}").shape[0]
                 setattr(
                     self._parameters.nn_parameters,
                     f"bias_{i + 1}",
@@ -2817,9 +2792,7 @@ class Model:
         common_options: dict[str, Any] | None = None,
         return_options: dict[str, Any] | None = None,
     ) -> ForwardRun | None:
-        args_options = [
-            deepcopy(arg) for arg in [cost_options, common_options, return_options]
-        ]
+        args_options = [deepcopy(arg) for arg in [cost_options, common_options, return_options]]
 
         args = _standardize_forward_run_args(self, *args_options)
 
@@ -2838,8 +2811,7 @@ class Model:
         callback: callable | None = None,
     ) -> Optimize | None:
         args_options = [
-            deepcopy(arg)
-            for arg in [optimize_options, cost_options, common_options, return_options]
+            deepcopy(arg) for arg in [optimize_options, cost_options, common_options, return_options]
         ]
 
         args = _standardize_optimize_args(
@@ -2907,8 +2879,7 @@ class Model:
         callback: callable | None = None,
     ) -> BayesianOptimize | None:
         args_options = [
-            deepcopy(arg)
-            for arg in [optimize_options, cost_options, common_options, return_options]
+            deepcopy(arg) for arg in [optimize_options, cost_options, common_options, return_options]
         ]
 
         args = _standardize_bayesian_optimize_args(
@@ -2959,12 +2930,10 @@ class Model:
         common_options: dict[str, Any] | None = None,
         return_options: dict[str, Any] | None = None,
     ):
-
         grad_mode, return_options = _standardize_grad_mode(grad_mode, return_options)
 
         args_options = [
-            deepcopy(arg)
-            for arg in [optimize_options, cost_options, common_options, return_options]
+            deepcopy(arg) for arg in [optimize_options, cost_options, common_options, return_options]
         ]
 
         args = _standardize_optimize_args(

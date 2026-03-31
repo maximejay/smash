@@ -748,7 +748,6 @@ DEFAULT_MODEL_SETUP = {
     "snow_module": "zero",
     "hydrological_module": "gr4",
     "routing_module": "lr",
-    "return_opt_grad": "none",
     "hidden_neuron": 16,
     "serr_mu_mapping": "Zero",
     "serr_sigma_mapping": "Linear",
@@ -1174,8 +1173,6 @@ DEFAULT_SIMULATION_RETURN_OPTIONS = {
 }
 
 SIMULATION_RETURN_OPTIONS_TIME_STEP_KEYS = ["rr_states", "q_domain", "internal_fluxes"]
-
-RETURN_OPT_GRAD = ["none", "q", "qe"]
 
 ### IO ###
 ##########
