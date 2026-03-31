@@ -10,6 +10,7 @@ import pandas as pd
 
 from smash._constant import (
     DEFAULT_MODEL_SETUP,
+    DESCRIPTOR_TFM,
     F_PRECISION,
     FEASIBLE_RR_INITIAL_STATES,
     FEASIBLE_RR_PARAMETERS,
@@ -59,7 +60,7 @@ def _standardize_model_setup_bool(key: str, value: bool | int) -> bool:
 
 
 def _standardize_model_setup_directory(read: bool, key: str, value: str | None) -> str:
-    directory_kind = key.split("_")[0]
+    directory_kind = key.split("_", maxsplit=1)[0]
 
     if read:
         if value is None:
@@ -76,7 +77,7 @@ def _standardize_model_setup_directory(read: bool, key: str, value: str | None) 
 
 
 def _standardize_model_setup_file(read: bool, key: str, value: str | None) -> str:
-    file_kind = key.split("_")[0]
+    file_kind = key.split("_", maxsplit=1)[0]
 
     if read:
         if value is None:
@@ -434,6 +435,18 @@ def _standardize_model_setup_descriptor_name(
         raise TypeError("descriptor_name model setup must be of ListLike type (List, Tuple, np.ndarray)")
 
     return descriptor_name
+
+
+def _standardize_model_setup_descriptor_tfm(descriptor_tfm: str, **kwargs) -> str:
+    if isinstance(descriptor_tfm, str):
+        if descriptor_tfm.lower() not in DESCRIPTOR_TFM:
+            raise ValueError(
+                f"Unknown descriptor transformation '{descriptor_tfm}'. Choices: {DESCRIPTOR_TFM}"
+            )
+    else:
+        raise TypeError("descriptor_tfm argument must be a str")
+
+    return descriptor_tfm.lower()
 
 
 def _standardize_model_setup_read_imperviousness(read_imperviousness: bool, **kwargs) -> bool:

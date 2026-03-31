@@ -130,7 +130,7 @@ class Model:
         hydrological_module : `str`, default 'gr4'
             Name of hydrological module. Should be one of:
 
-            - ``'gr4'``, ``'gr4_mlp'``, ``'gr4_ri'``, ``'gr4_ode'``, ``'gr4_ode_mlp'``
+            - ``'gr4'``, ``'gr4_mlp'``, ``'gr4_ri'``, ``'gr4_ode'``, ``'gr4_ude'``
             - ``'gr5'``, ``'gr5_mlp'``, ``'gr5_ri'``
             - ``'gr6'``, ``'gr6_mlp'``
             - ``'grc'``, ``'grc_mlp'``
@@ -372,6 +372,10 @@ class Model:
             List of descriptor name.
             This option is ``mandatory`` if **read_descriptor** is set to True.
 
+        descriptor_tfm : `str`, default 'standardize'
+            Transformation method among ``'standardize'``, ``'normalize'`` or ``'keep'`` applied to the
+            descriptor(s). This option is only applicable if **read_descriptor** is set to True.
+
         read_imperviousness : `bool`, default False
             Whether or not to read descriptor file(s).
 
@@ -431,7 +435,7 @@ class Model:
     Model
         atmos_data: ['mean_pet', 'mean_prcp', '...', 'sparse_prcp', 'sparse_snow']
         mesh: ['active_cell', 'area', '...', 'xres', 'ymax']
-        physio_data: ['descriptor', 'l_descriptor', 'u_descriptor']
+        physio_data: ['descriptor', 'imperviousness', '...', 'mean_descriptor', 'std_descriptor']
         response: ['q']
         response_data: ['q']
         rr_final_states: ['keys', 'values']
@@ -774,6 +778,8 @@ class Model:
                 [1.2933834e+00, 2.0580339e+01],
                 [1.3551705e+00, 2.1825863e+01]]], dtype=float32)
             l_descriptor: array([0.       , 3.0111098], dtype=float32)
+            mean_descriptor: array([ 1.3081173, 14.173195 ], dtype=float32)
+            std_descriptor: array([1.0479958, 2.8914263], dtype=float32)
             u_descriptor: array([ 5.455888, 23.433908], dtype=float32)
 
         Access to a specific physiographic descriptor
@@ -793,9 +799,10 @@ class Model:
         If you are using IPython, tab completion allows you to visualize all the attributes and methods
 
         >>> model.physio_data.<TAB>
-        model.physio_data.copy()        model.physio_data.l_descriptor
-        model.physio_data.descriptor    model.physio_data.u_descriptor
-        model.physio_data.from_handle(
+        model.physio_data.copy(            model.physio_data.l_descriptor
+        model.physio_data.descriptor       model.physio_data.mean_descriptor
+        model.physio_data.from_handle(     model.physio_data.std_descriptor
+        model.physio_data.imperviousness   model.physio_data.u_descriptor
         """
 
         return self._input_data.physio_data

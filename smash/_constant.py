@@ -47,7 +47,9 @@ def get_rr_internal_fluxes_from_structure(structure: str) -> list[str]:
     return rr_internal_fluxes
 
 
-def get_neurons_from_hydrological_module(hydrological_module: str, hidden_neuron: np.ndarray) -> np.ndarray:
+def get_neurons_from_hydrological_module(
+    hydrological_module: str, hidden_neuron: np.ndarray
+) -> np.ndarray:
     n_in, n_out = HYDROLOGICAL_MODULE_INOUT_NEURONS[hydrological_module]
     neurons = [n_in] + [val for val in hidden_neuron if val > 0] + [n_out]
     padded_neurons = np.zeros(len(hidden_neuron) + 2, dtype=np.int32)
@@ -69,7 +71,7 @@ HYDROLOGICAL_MODULE = [
     "gr4_mlp",
     "gr4_ri",
     "gr4_ode",
-    "gr4_ode_mlp",
+    "gr4_ude",
     "gr5",
     "gr5_mlp",
     "gr5_ri",
@@ -107,7 +109,7 @@ HYDROLOGICAL_MODULE_RR_PARAMETERS = dict(
         (
             [["ci", "cp", "ct", "kexc"]] * 2  # % gr4, gr4_mlp,
             + [["ci", "cp", "ct", "alpha1", "alpha2", "kexc"]]  # % gr4_ri
-            + [["ci", "cp", "ct", "kexc"]] * 2  # % gr4_ode, gr4_ode_mlp
+            + [["ci", "cp", "ct", "kexc"]] * 2  # % gr4_ode, gr4_ude
             + [["ci", "cp", "ct", "kexc", "aexc"]] * 2  # % gr5, gr5_mlp
             + [["ci", "cp", "ct", "alpha1", "alpha2", "kexc", "aexc"]]  # % gr5_ri
             + [["ci", "cp", "ct", "be", "kexc", "aexc"]] * 2  # % gr6, gr6_mlp
@@ -121,7 +123,9 @@ HYDROLOGICAL_MODULE_RR_PARAMETERS = dict(
 
 # % Following ROUTING_MODULE order
 ROUTING_MODULE_RR_PARAMETERS = dict(
-    zip(ROUTING_MODULE, [[], [], ["llr"], ["akw", "bkw"]])  # % zero # % lag0  # % lr  # % kw
+    zip(
+        ROUTING_MODULE, [[], [], ["llr"], ["akw", "bkw"]]
+    )  # % zero # % lag0  # % lr  # % kw
 )
 
 # % Following SNOW_MODULE order
@@ -140,7 +144,8 @@ HYDROLOGICAL_MODULE_RR_STATES = dict(
     zip(
         HYDROLOGICAL_MODULE,
         (
-            [["hi", "hp", "ht"]] * 8  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ode_mlp, gr5, gr5_mlp, gr5_ri
+            [["hi", "hp", "ht"]]
+            * 8  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ude, gr5, gr5_mlp, gr5_ri
             + [["hi", "hp", "ht", "he"]] * 2  # % gr6, gr6_mlp
             + [["hi", "hp", "ht", "hl"]] * 2  # % grc, grc_mlp
             + [["hp", "ht"]] * 2  # % grd, grd_mlp
@@ -157,7 +162,9 @@ ROUTING_MODULE_RR_STATES = dict(
 
 
 # % Following ROUTING_MODULE order
-ROUTING_MODULE_NQZ = dict(zip(ROUTING_MODULE, [1, 1, 1, 2]))  # % zero # % lag0  # % lr  # % kw
+ROUTING_MODULE_NQZ = dict(
+    zip(ROUTING_MODULE, [1, 1, 1, 2])
+)  # % zero # % lag0  # % lr  # % kw
 
 # % Following SNOW_MODULE order
 SNOW_MODULE_RR_INTERNAL_FLUXES = dict(
@@ -192,7 +199,7 @@ HYDROLOGICAL_MODULE_RR_INTERNAL_FLUXES = dict(
                 ]
             ]
             * 3  # % gr4, gr4_mlp, gr4_ri
-            + [["pn", "en", "lexc", "qt"]] * 2  # % gr4_ode, gr4_ode_mlp
+            + [["pn", "en", "lexc", "qt"]] * 2  # % gr4_ode, gr4_ude
             + [
                 [
                     "pn",
@@ -248,7 +255,8 @@ HYDROLOGICAL_MODULE_RR_INTERNAL_FLUXES = dict(
                 ]
             ]
             * 2  # % grc, grc_mlp
-            + [["ei", "pn", "en", "pr", "perc", "ps", "es", "prr", "qr", "qt"]] * 2  # % grd, grd_mlp
+            + [["ei", "pn", "en", "pr", "perc", "ps", "es", "prr", "qr", "qt"]]
+            * 2  # % grd, grd_mlp
             + [
                 [
                     "ei",
@@ -273,7 +281,9 @@ HYDROLOGICAL_MODULE_RR_INTERNAL_FLUXES = dict(
 
 # % Following ROUTING_MODULE order
 ROUTING_MODULE_RR_INTERNAL_FLUXES = dict(
-    zip(ROUTING_MODULE, [[], ["qup"], ["qup"], ["qim1j"]])  # % zero # % lag0  # % lr  # % kw
+    zip(
+        ROUTING_MODULE, [[], ["qup"], ["qup"], ["qim1j"]]
+    )  # % zero # % lag0  # % lr  # % kw
 )
 
 
@@ -328,7 +338,7 @@ HYDROLOGICAL_MODULE_INOUT_NEURONS = dict(
                 (4, 4),  # % gr4_mlp
                 (0, 0),  # % gr4_ri
                 (0, 0),  # % gr4_ode
-                (4, 4),  # % gr4_ode_mlp
+                (4, 4),  # % gr4_ude
                 (0, 0),  # % gr5
                 (4, 4),  # % gr5_mlp
                 (0, 0),  # % gr5_ri
@@ -351,16 +361,16 @@ HYDROLOGICAL_MODULE_INOUT_NEURONS = dict(
 
 RR_PARAMETERS = [
     "kmlt",  # % ssn
-    "ci",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ode_mlp, gr5, gr5_mlp, gr5_ri, gr6, gr6_mlp, grc, grc_mlp
-    "cp",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ode_mlp, gr5, gr5_mlp, gr5_ri, gr6, gr6_mlp, grc, grc_mlp,
+    "ci",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ude, gr5, gr5_mlp, gr5_ri, gr6, gr6_mlp, grc, grc_mlp
+    "cp",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ude, gr5, gr5_mlp, gr5_ri, gr6, gr6_mlp, grc, grc_mlp,
     # % grd, grd_mlp
-    "ct",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ode_mlp, gr5, gr5_mlp, gr5_ri, gr6, gr6_mlp, grc, grc_mlp,
+    "ct",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ude, gr5, gr5_mlp, gr5_ri, gr6, gr6_mlp, grc, grc_mlp,
     # %grd, grd_mlp
     "alpha1",  # % gr4_ri, gr5_ri
     "alpha2",  # % gr4_ri, gr5_ri
     "cl",  # % grc, grc_mlp
     "be",  # % gr6, gr6_mlp
-    "kexc",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ode_mlp, gr5, gr5_mlp, gr6, gr6_mlp, grc, grc_mlp
+    "kexc",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ude, gr5, gr5_mlp, gr6, gr6_mlp, grc, grc_mlp
     "aexc",  # % gr5, gr5_mlp, gr5_ri, gr6, gr6_mlp
     "ca",  # % loieau, loieau_mlp
     "cc",  # % loieau, loieau_mlp
@@ -381,10 +391,10 @@ RR_PARAMETERS = [
 
 RR_STATES = [
     "hs",  # % ssn
-    "hi",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ode_mlp, gr5, gr5_mlp, gr5_ri, gr6, gr6_mlp, grc, grc_mlp
-    "hp",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ode_mlp, gr5, gr5_mlp, gr5_ri, gr6, gr6_mlp, grc, grc_mlp,
+    "hi",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ude, gr5, gr5_mlp, gr5_ri, gr6, gr6_mlp, grc, grc_mlp
+    "hp",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ude, gr5, gr5_mlp, gr5_ri, gr6, gr6_mlp, grc, grc_mlp,
     # % grd, grd_mlp
-    "ht",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ode_mlp, gr5, gr5_mlp, gr5_ri, gr6, gr6_mlp, grc, grc_mlp,
+    "ht",  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ude, gr5, gr5_mlp, gr5_ri, gr6, gr6_mlp, grc, grc_mlp,
     # % grd, grd_mlp
     "hl",  # % grc, grc_mlp
     "he",  # % gr6, gr6_mlp
@@ -784,6 +794,7 @@ DEFAULT_MODEL_SETUP = {
     "descriptor_format": "tif",
     "descriptor_directory": None,
     "descriptor_name": None,
+    "descriptor_tfm": "standardize",
     "read_imperviousness": False,
     "imperviousness_format": "tif",
     "imperviousness_file": None,
@@ -894,9 +905,13 @@ ACTIVATION_FUNCTION = [func.lower() for func in ACTIVATION_FUNCTION_CLASS]
 
 PEAK_QUANT = 0.995
 
+PEAK_VALUE = 0
+
 MAX_DURATION = 240
 
-EVENT_SEG_KEYS = ["peak_quant", "max_duration", "by"]
+EVENT_SEG_SIGNATURES_KEYS = ["peak_quant", "peak_value", "max_duration", "by"]
+
+EVENT_SEG_SIMULATION_KEYS = ["peak_quant", "peak_value", "max_duration"]
 
 
 ### GENERATE SAMPLES ###
@@ -933,6 +948,8 @@ MAPPING_OPTIMIZER = dict(
         ],
     )
 )
+
+DESCRIPTOR_TFM = ["standardize", "normalize", "keep"]
 
 JOBS_CMPT = METRICS + SIGNS
 
@@ -1099,7 +1116,9 @@ DEFAULT_SIMULATION_COST_OPTIONS = {
         "end_warmup": None,
         "gauge": "dws",
         "wgauge": "mean",
-        "event_seg": dict(zip(EVENT_SEG_KEYS[:2], [PEAK_QUANT, MAX_DURATION])),
+        "event_seg": dict(
+            zip(EVENT_SEG_SIMULATION_KEYS, [PEAK_QUANT, PEAK_VALUE, MAX_DURATION])
+        ),
     },
     "optimize": {
         "jobs_cmpt": "nse",
@@ -1111,7 +1130,9 @@ DEFAULT_SIMULATION_COST_OPTIONS = {
         "end_warmup": None,
         "gauge": "dws",
         "wgauge": "mean",
-        "event_seg": dict(zip(EVENT_SEG_KEYS[:2], [PEAK_QUANT, MAX_DURATION])),
+        "event_seg": dict(
+            zip(EVENT_SEG_SIMULATION_KEYS, [PEAK_QUANT, PEAK_VALUE, MAX_DURATION])
+        ),
     },
     "bayesian_optimize": {
         "end_warmup": None,
@@ -1188,6 +1209,7 @@ MODEL_DDT_IO_ATTR_KEYS = {
         "end_time",
         "dt",
         "descriptor_name",
+        "descriptor_tfm",
     ],
     "mesh": [
         "xres",
