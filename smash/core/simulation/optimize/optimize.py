@@ -144,11 +144,7 @@ class Optimize:
         if dct.keys():
             m = max(map(len, list(dct.keys()))) + 1
             return "\n".join(
-                [
-                    k.rjust(m) + ": " + repr(type(v))
-                    for k, v in sorted(dct.items())
-                    if not k.startswith("_")
-                ]
+                [k.rjust(m) + ": " + repr(type(v)) for k, v in sorted(dct.items()) if not k.startswith("_")]
             )
         else:
             return self.__class__.__name__ + "()"
@@ -226,11 +222,7 @@ class BayesianOptimize:
         if dct.keys():
             m = max(map(len, list(dct.keys()))) + 1
             return "\n".join(
-                [
-                    k.rjust(m) + ": " + repr(type(v))
-                    for k, v in sorted(dct.items())
-                    if not k.startswith("_")
-                ]
+                [k.rjust(m) + ": " + repr(type(v)) for k, v in sorted(dct.items()) if not k.startswith("_")]
             )
         else:
             return self.__class__.__name__ + "()"
@@ -391,9 +383,7 @@ def _optimize_lcurve_wjreg(
     if (jobs_min / jobs_max) < 0.95 and (jreg_max - jreg_min) > 0.0:
         wjreg_fast = (jobs_max - jobs_min) / jreg_max
         log10_wjreg_fast = np.log10(wjreg_fast)
-        wjreg_range = np.array(
-            10 ** np.arange(log10_wjreg_fast - 0.66, log10_wjreg_fast + 0.67, 0.33)
-        )
+        wjreg_range = np.array(10 ** np.arange(log10_wjreg_fast - 0.66, log10_wjreg_fast + 0.67, 0.33))
     else:
         wjreg_range = np.empty(shape=0)
 
@@ -518,17 +508,13 @@ def _optimize(
             model, wrap_options, wrap_returns, optimize_options, return_options
         )
         if wrap_options.comm.verbose:
-            print(
-                f"{' ' * 4}FAST WJREG LAST CYCLE. wjreg: {'{:.5e}'.format(wrap_options.cost.wjreg)}"
-            )
+            print(f"{' ' * 4}FAST WJREG LAST CYCLE. wjreg: {'{:.5e}'.format(wrap_options.cost.wjreg)}")
     elif auto_wjreg == "lcurve":
         wrap_options.cost.wjreg, lcurve_wjreg = _optimize_lcurve_wjreg(
             model, wrap_options, wrap_returns, optimize_options, return_options
         )
         if wrap_options.comm.verbose:
-            print(
-                f"{' ' * 4}L-CURVE WJREG LAST CYCLE. wjreg: {'{:.5e}'.format(wrap_options.cost.wjreg)}"
-            )
+            print(f"{' ' * 4}L-CURVE WJREG LAST CYCLE. wjreg: {'{:.5e}'.format(wrap_options.cost.wjreg)}")
     else:
         pass
 
@@ -564,9 +550,7 @@ def _optimize(
         if "internal_fluxes" in ret:
             ret["internal_fluxes"] = {
                 key: ret["internal_fluxes"][..., i]
-                for i, key in enumerate(
-                    STRUCTURE_RR_INTERNAL_FLUXES[model.setup.structure]
-                )
+                for i, key in enumerate(STRUCTURE_RR_INTERNAL_FLUXES[model.setup.structure])
             }
 
         # % Add time_step to the object
@@ -637,9 +621,7 @@ def _bayesian_optimize(
 
     # % Map cost_options dict to derived type
     # % Control prior handled after
-    _map_dict_to_fortran_derived_type(
-        cost_options, wrap_options.cost, skip=["control_prior"]
-    )
+    _map_dict_to_fortran_derived_type(cost_options, wrap_options.cost, skip=["control_prior"])
 
     # % Map common_options dict to derived type
     _map_dict_to_fortran_derived_type(common_options, wrap_options.comm)
@@ -648,9 +630,7 @@ def _bayesian_optimize(
     _map_dict_to_fortran_derived_type(return_options, wrap_returns)
 
     # % Control prior check
-    _handle_bayesian_optimize_control_prior(
-        model, cost_options["control_prior"], wrap_options
-    )
+    _handle_bayesian_optimize_control_prior(model, cost_options["control_prior"], wrap_options)
 
     pyret = _apply_optimizer(
         model,
@@ -679,9 +659,7 @@ def _bayesian_optimize(
         if "internal_fluxes" in ret:
             ret["internal_fluxes"] = {
                 key: ret["internal_fluxes"][..., i]
-                for i, key in enumerate(
-                    STRUCTURE_RR_INTERNAL_FLUXES[model.setup.structure]
-                )
+                for i, key in enumerate(STRUCTURE_RR_INTERNAL_FLUXES[model.setup.structure])
             }
         # % Add time_step to the object
         if any(k in SIMULATION_RETURN_OPTIONS_TIME_STEP_KEYS for k in ret):
@@ -965,9 +943,7 @@ def _ann_adaptive_optimize(
         ret["control_vector"] = np.append(parameters.control.x, _net2vect(net))
 
     if "n_iter" in return_options["keys"]:
-        ret["n_iter"] = (
-            istop if istop else optimize_options["termination_crit"]["maxiter"]
-        )
+        ret["n_iter"] = istop if istop else optimize_options["termination_crit"]["maxiter"]
 
     if "projg" in return_options["keys"]:
         ret["projg"] = net.history["proj_grad"][istop - 1]
@@ -996,12 +972,8 @@ def _scipy_optimize(
 
     # % Set None values for unbounded/semi-unbounded controls to pass to scipy optimize functions
     # which requires None to identify unbounded values
-    l_control = np.where(
-        np.isin(parameters.control.nbd, [0, 3]), None, parameters.control.l
-    )
-    u_control = np.where(
-        np.isin(parameters.control.nbd, [0, 1]), None, parameters.control.u
-    )
+    l_control = np.where(np.isin(parameters.control.nbd, [0, 3]), None, parameters.control.l)
+    u_control = np.where(np.isin(parameters.control.nbd, [0, 1]), None, parameters.control.u)
 
     scipy_callback = _ScipyOptimizeCallback(callback, wrap_options.comm.verbose)
 
@@ -1072,9 +1044,7 @@ def _scipy_optimize(
     if "n_iter" in return_options["keys"]:
         ret["n_iter"] = res_optimize.nit
 
-    if (wrap_options.optimize.optimizer in GRADIENT_BASED_OPTIMIZER) and (
-        "projg" in return_options["keys"]
-    ):
+    if (wrap_options.optimize.optimizer in GRADIENT_BASED_OPTIMIZER) and ("projg" in return_options["keys"]):
         ret["projg"] = scipy_callback.projg
 
     if "serr_mu" in return_options["keys"]:
@@ -1111,9 +1081,7 @@ def _sbs_optimize(
     z_wa = np.copy(y_wa)
 
     # % Set np.inf values for unbounded/semi-unbounded controls
-    l_wa = np.where(
-        np.isin(parameters.control.nbd, [0, 3]), -np.inf, parameters.control.l
-    )
+    l_wa = np.where(np.isin(parameters.control.nbd, [0, 3]), -np.inf, parameters.control.l)
     u_wa = np.where(np.isin(parameters.control.nbd, [0, 1]), np.inf, parameters.control.u)
 
     wrap_forward_run(
@@ -1140,9 +1108,7 @@ def _sbs_optimize(
     message = "STOP: TOTAL NO. of ITERATIONS REACHED LIMIT"
 
     if wrap_options.comm.verbose:
-        print(
-            f"{' ' * 4}At iterate {0:>5}    nfg = {nfg:>5}    J = {gx:>.5e}    ddx = {ddx:>4.2f}"
-        )
+        print(f"{' ' * 4}At iterate {0:>5}    nfg = {nfg:>5}    J = {gx:>.5e}    ddx = {ddx:>4.2f}")
 
     for iter in range(1, optimize_options["termination_crit"]["maxiter"] * n + 1):
         dxn = min(dxn, ddx)
@@ -1239,11 +1205,7 @@ def _sbs_optimize(
             iteration = iter // n + (iter % n > 0)
 
             if callback is not None:
-                callback(
-                    iopt=Optimize(
-                        {"control_vector": np.copy(z_wa), "cost": gx, "n_iter": iteration}
-                    )
-                )
+                callback(iopt=Optimize({"control_vector": np.copy(z_wa), "cost": gx, "n_iter": iteration}))
 
             if wrap_options.comm.verbose:
                 print(
@@ -1357,7 +1319,6 @@ def _backward_run(
     return_options: dict[str, Any] | None = None,
     callback: callable | None = None,
 ):
-
     wrap_options = OptionsDT(
         model.setup,
         model.mesh,
@@ -1376,9 +1337,7 @@ def _backward_run(
     _map_dict_to_fortran_derived_type(optimize_options, wrap_options.optimize)
 
     # % Map cost_options dict to derived type
-    _map_dict_to_fortran_derived_type(
-        cost_options, wrap_options.cost, skip=["control_prior"]
-    )
+    _map_dict_to_fortran_derived_type(cost_options, wrap_options.cost, skip=["control_prior"])
 
     # % Map common_options dict to derived type
     _map_dict_to_fortran_derived_type(common_options, wrap_options.comm)

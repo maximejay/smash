@@ -47,9 +47,7 @@ def get_rr_internal_fluxes_from_structure(structure: str) -> list[str]:
     return rr_internal_fluxes
 
 
-def get_neurons_from_hydrological_module(
-    hydrological_module: str, hidden_neuron: np.ndarray
-) -> np.ndarray:
+def get_neurons_from_hydrological_module(hydrological_module: str, hidden_neuron: np.ndarray) -> np.ndarray:
     n_in, n_out = HYDROLOGICAL_MODULE_INOUT_NEURONS[hydrological_module]
     neurons = [n_in] + [val for val in hidden_neuron if val > 0] + [n_out]
     padded_neurons = np.zeros(len(hidden_neuron) + 2, dtype=np.int32)
@@ -123,9 +121,7 @@ HYDROLOGICAL_MODULE_RR_PARAMETERS = dict(
 
 # % Following ROUTING_MODULE order
 ROUTING_MODULE_RR_PARAMETERS = dict(
-    zip(
-        ROUTING_MODULE, [[], [], ["llr"], ["akw", "bkw"]]
-    )  # % zero # % lag0  # % lr  # % kw
+    zip(ROUTING_MODULE, [[], [], ["llr"], ["akw", "bkw"]])  # % zero # % lag0  # % lr  # % kw
 )
 
 # % Following SNOW_MODULE order
@@ -144,8 +140,7 @@ HYDROLOGICAL_MODULE_RR_STATES = dict(
     zip(
         HYDROLOGICAL_MODULE,
         (
-            [["hi", "hp", "ht"]]
-            * 8  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ude, gr5, gr5_mlp, gr5_ri
+            [["hi", "hp", "ht"]] * 8  # % gr4, gr4_mlp, gr4_ri, gr4_ode, gr4_ude, gr5, gr5_mlp, gr5_ri
             + [["hi", "hp", "ht", "he"]] * 2  # % gr6, gr6_mlp
             + [["hi", "hp", "ht", "hl"]] * 2  # % grc, grc_mlp
             + [["hp", "ht"]] * 2  # % grd, grd_mlp
@@ -162,9 +157,7 @@ ROUTING_MODULE_RR_STATES = dict(
 
 
 # % Following ROUTING_MODULE order
-ROUTING_MODULE_NQZ = dict(
-    zip(ROUTING_MODULE, [1, 1, 1, 2])
-)  # % zero # % lag0  # % lr  # % kw
+ROUTING_MODULE_NQZ = dict(zip(ROUTING_MODULE, [1, 1, 1, 2]))  # % zero # % lag0  # % lr  # % kw
 
 # % Following SNOW_MODULE order
 SNOW_MODULE_RR_INTERNAL_FLUXES = dict(
@@ -255,8 +248,7 @@ HYDROLOGICAL_MODULE_RR_INTERNAL_FLUXES = dict(
                 ]
             ]
             * 2  # % grc, grc_mlp
-            + [["ei", "pn", "en", "pr", "perc", "ps", "es", "prr", "qr", "qt"]]
-            * 2  # % grd, grd_mlp
+            + [["ei", "pn", "en", "pr", "perc", "ps", "es", "prr", "qr", "qt"]] * 2  # % grd, grd_mlp
             + [
                 [
                     "ei",
@@ -281,9 +273,7 @@ HYDROLOGICAL_MODULE_RR_INTERNAL_FLUXES = dict(
 
 # % Following ROUTING_MODULE order
 ROUTING_MODULE_RR_INTERNAL_FLUXES = dict(
-    zip(
-        ROUTING_MODULE, [[], ["qup"], ["qup"], ["qim1j"]]
-    )  # % zero # % lag0  # % lr  # % kw
+    zip(ROUTING_MODULE, [[], ["qup"], ["qup"], ["qim1j"]])  # % zero # % lag0  # % lr  # % kw
 )
 
 
@@ -1116,9 +1106,7 @@ DEFAULT_SIMULATION_COST_OPTIONS = {
         "end_warmup": None,
         "gauge": "dws",
         "wgauge": "mean",
-        "event_seg": dict(
-            zip(EVENT_SEG_SIMULATION_KEYS, [PEAK_QUANT, PEAK_VALUE, MAX_DURATION])
-        ),
+        "event_seg": dict(zip(EVENT_SEG_SIMULATION_KEYS, [PEAK_QUANT, PEAK_VALUE, MAX_DURATION])),
     },
     "optimize": {
         "jobs_cmpt": "nse",
@@ -1130,9 +1118,7 @@ DEFAULT_SIMULATION_COST_OPTIONS = {
         "end_warmup": None,
         "gauge": "dws",
         "wgauge": "mean",
-        "event_seg": dict(
-            zip(EVENT_SEG_SIMULATION_KEYS, [PEAK_QUANT, PEAK_VALUE, MAX_DURATION])
-        ),
+        "event_seg": dict(zip(EVENT_SEG_SIMULATION_KEYS, [PEAK_QUANT, PEAK_VALUE, MAX_DURATION])),
     },
     "bayesian_optimize": {
         "end_warmup": None,

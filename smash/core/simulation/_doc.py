@@ -860,9 +860,7 @@ Parameters
 %(model_parameter)s
 
 """
-    + _gen_docstring_from_base_doc(
-        MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0
-    )
+    + _gen_docstring_from_base_doc(MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0)
     + """
 
 optimize_options : `dict[str, Any]` or None, default None
@@ -1077,9 +1075,7 @@ Parameters
 %(model_parameter)s
 
 """
-    + _gen_docstring_from_base_doc(
-        MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0
-    )
+    + _gen_docstring_from_base_doc(MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0)
     + """
 
 optimize_options : `dict[str, Any]` or None, default None
@@ -1271,9 +1267,7 @@ model : `Model`
     Primary data structure of the hydrological model `smash`.
 
 """
-    + _gen_docstring_from_base_doc(
-        MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0
-    )
+    + _gen_docstring_from_base_doc(MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0)
     + """
 
 optimize_options : `dict[str, Any]` or None, default None
@@ -1380,9 +1374,7 @@ model : `Model`
     Primary data structure of the hydrological model `smash`.
 
 """
-    + _gen_docstring_from_base_doc(
-        MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0
-    )
+    + _gen_docstring_from_base_doc(MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0)
     + """
 
 optimize_options : `dict[str, Any]` or None, default None
@@ -1532,9 +1524,7 @@ model : `Model`
     Primary data structure of the hydrological model `smash`.
 
 """
-    + _gen_docstring_from_base_doc(
-        MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0
-    )
+    + _gen_docstring_from_base_doc(MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0)
     + """
 
 Returns
@@ -1709,9 +1699,7 @@ model : `Model`
     Primary data structure of the hydrological model `smash`.
 
 """
-    + _gen_docstring_from_base_doc(
-        MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0
-    )
+    + _gen_docstring_from_base_doc(MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0)
     + """
 
 Returns
@@ -1820,9 +1808,7 @@ control_vector : `numpy.ndarray`
     method.
 
 """
-    + _gen_docstring_from_base_doc(
-        MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0
-    )
+    + _gen_docstring_from_base_doc(MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0)
     + """
 
 optimize_options : `dict[str, Any]` or None, default None
@@ -1875,9 +1861,7 @@ control_vector : `numpy.ndarray`
     (or `Model.bayesian_optimize`) method.
 
 """
-    + _gen_docstring_from_base_doc(
-        MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0
-    )
+    + _gen_docstring_from_base_doc(MAPPING_OPTIMIZER_BASE_DOC, ["mapping", "optimizer"], nindent=0)
     + """
 
 optimize_options : `dict[str, Any]` or None, default None
@@ -2041,9 +2025,7 @@ _smash_optimize_control_info_doc_substitution = DocSubstitution(
     bounds_get_serr_parameters_bounds="",
 )
 
-_bayesian_optimize_control_info_doc_appender = DocAppender(
-    _bayesian_optimize_control_info_doc, indents=0
-)
+_bayesian_optimize_control_info_doc_appender = DocAppender(_bayesian_optimize_control_info_doc, indents=0)
 _smash_bayesian_optimize_control_info_doc_substitution = DocSubstitution(
     mapping_ann="",
     optimizer_lbfgsb="- ``'lbfgsb'`` (for all mappings)",
@@ -2068,9 +2050,7 @@ _set_control_optimize_doc_substitution = DocSubstitution(
     bounds_get_serr_parameters_bounds="",
 )
 
-_set_control_bayesian_optimize_doc_appender = DocAppender(
-    _set_control_bayesian_optimize_doc, indents=0
-)
+_set_control_bayesian_optimize_doc_appender = DocAppender(_set_control_bayesian_optimize_doc, indents=0)
 _set_control_bayesian_optimize_doc_substitution = DocSubstitution(
     mapping_ann="",
     optimizer_lbfgsb="- ``'lbfgsb'`` (for all mappings)",
@@ -2083,9 +2063,7 @@ _set_control_bayesian_optimize_doc_substitution = DocSubstitution(
     "`Model.get_serr_sigma_parameters_bounds`",
 )
 
-_default_optimize_options_doc_appender = DocAppender(
-    _default_optimize_options_doc, indents=0
-)
+_default_optimize_options_doc_appender = DocAppender(_default_optimize_options_doc, indents=0)
 _smash_default_optimize_options_doc_substitution = DocSubstitution(
     mapping_ann="- ``'ann'``",
     optimizer_lbfgsb="- ``'lbfgsb'`` (for all mappings except ``'ann'``)",

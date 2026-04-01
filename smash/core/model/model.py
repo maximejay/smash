@@ -2931,6 +2931,7 @@ class Model:
     def backward_run(
         self,
         mapping: str = "uniform",
+        optimizer: str = "lbfgsb",
         grad_mode: str = "j",
         optimize_options: dict[str, Any] | None = None,
         cost_options: dict[str, Any] | None = None,
@@ -2946,7 +2947,7 @@ class Model:
         args = _standardize_optimize_args(
             self,
             mapping,
-            None,
+            optimizer,
             *args_options,
             None,
         )

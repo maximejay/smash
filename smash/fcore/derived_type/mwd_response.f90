@@ -52,12 +52,6 @@ contains
         allocate (this%qac(1, 1))
         this%qac = -99._sp
 
-!~         if (setup%return_opt_grad .eq. "q" .or. setup%return_opt_grad .eq. "qt") then
-!~             deallocate (this%qac)
-!~             allocate (this%qac(mesh%nac, setup%ntime_step))
-!~             this%qac = -99._sp
-!~         end if
-
     end subroutine ResponseDT_initialise
 
     subroutine ResponseDT_reallocate_qac(this, setup, mesh, q_domain_kind)

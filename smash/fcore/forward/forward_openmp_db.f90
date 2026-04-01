@@ -2107,11 +2107,6 @@ MODULE MWD_RESPONSE_DIFF
 CONTAINS
   SUBROUTINE RESPONSEDT_INITIALISE(this, setup, mesh)
     IMPLICIT NONE
-!~         if (setup%return_opt_grad .eq. "q" .or. setup%return_opt_grad .eq. "qt") then
-!~             deallocate (this%qac)
-!~             allocate (this%qac(mesh%nac, setup%ntime_step))
-!~             this%qac = -99._sp
-!~         end if
     TYPE(RESPONSEDT), INTENT(INOUT) :: this
     TYPE(SETUPDT), INTENT(IN) :: setup
     TYPE(MESHDT), INTENT(IN) :: mesh
@@ -29984,8 +29979,6 @@ SUBROUTINE BASE_FORWARD_RUN_D(setup, mesh, input_data, parameters, &
   parameters_d%rr_initial_states%values = 0.0_4
   CALL CONTROL_TO_PARAMETERS_D(setup, mesh, input_data, parameters, &
 &                        parameters_d, options)
-! % Reallocate output%qac if necessary (depend  on returns%q_domain_kind_flag)
-!~     call ResponseDT_reallocate_qac(output%response, setup, mesh, returns%q_domain_kind_flag, returns%q_domain_kind)
 !% Simulation
   CALL SIMULATION_D(setup, mesh, input_data, parameters, parameters_d, &
 &             output, output_d, options, returns)
@@ -30055,8 +30048,6 @@ SUBROUTINE BASE_FORWARD_RUN_B(setup, mesh, input_data, parameters, &
 &               ))
   CALL CONTROL_TO_PARAMETERS(setup, mesh, input_data, parameters, &
 &                      options)
-! % Reallocate output%qac if necessary (depend  on returns%q_domain_kind_flag)
-!~     call ResponseDT_reallocate_qac(output%response, setup, mesh, returns%q_domain_kind_flag, returns%q_domain_kind)
 !% Simulation
   CALL SIMULATION(setup, mesh, input_data, parameters, output, options, &
 &           returns)
@@ -30169,8 +30160,6 @@ SUBROUTINE BASE_FORWARD_RUN_NODIFF(setup, mesh, input_data, parameters, &
 !% Map control to parameters
   CALL CONTROL_TO_PARAMETERS(setup, mesh, input_data, parameters, &
 &                      options)
-! % Reallocate output%qac if necessary (depend  on returns%q_domain_kind_flag)
-!~     call ResponseDT_reallocate_qac(output%response, setup, mesh, returns%q_domain_kind_flag, returns%q_domain_kind)
 !% Simulation
   CALL SIMULATION(setup, mesh, input_data, parameters, output, options, &
 &           returns)
