@@ -393,7 +393,7 @@ def _get_parameters_q_b(
     parameters_b = parameters.copy()
     output_b = model._output.copy()
 
-    output_b.response.qac = np.float32(1)
+    output_b.response.qac = np.float32(1.0)
 
     wrap_forward_run_q_b(
         model.setup,

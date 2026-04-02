@@ -1137,6 +1137,7 @@ DEFAULT_SIMULATION_RETURN_OPTIONS = {
         "internal_fluxes": False,
         "cost": False,
         "jobs": False,
+        "q_domain_kind": "None",
     },
     "optimize": {
         "time_step": "all",
