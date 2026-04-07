@@ -178,10 +178,8 @@ def _standardize_grad_mode(grad_mode, return_options):
         return_options = {}
 
     if grad_mode == "q":
-        return_options.update({"q_domain_kind": "q", "q_domain_kind_q": True, "grad_q_domain": True})
+        return_options.update({"q_domain_kind_qt": False, "q_domain_kind_q": True, "grad_q_domain": True})
     elif grad_mode == "qt":
-        return_options.update({"q_domain_kind": "qt", "q_domain_kind_qt": True, "grad_q_domain": True})
-    elif grad_mode == "j":
-        return_options.update({"q_domain_kind": "None"})
+        return_options.update({"q_domain_kind_qt": True, "q_domain_kind_q": False, "grad_q_domain": True})
 
     return grad_mode, return_options
