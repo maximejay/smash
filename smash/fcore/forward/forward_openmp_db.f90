@@ -2119,17 +2119,14 @@ CONTAINS
     this%qac = -99._sp
   END SUBROUTINE RESPONSEDT_INITIALISE
 
-  SUBROUTINE RESPONSEDT_REALLOCATE_QAC(this, setup, mesh, q_domain_kind)
+  SUBROUTINE RESPONSEDT_REALLOCATE_QAC(this, setup, mesh)
     IMPLICIT NONE
     TYPE(RESPONSEDT), INTENT(INOUT) :: this
     TYPE(SETUPDT), INTENT(IN) :: setup
     TYPE(MESHDT), INTENT(IN) :: mesh
-    CHARACTER(len=lchar) :: q_domain_kind
-    IF (q_domain_kind .EQ. 'q' .OR. q_domain_kind .EQ. 'qt') THEN
-      DEALLOCATE(this%qac)
-      ALLOCATE(this%qac(mesh%nac, setup%ntime_step))
-      this%qac = -99._sp
-    END IF
+    DEALLOCATE(this%qac)
+    ALLOCATE(this%qac(mesh%nac, setup%ntime_step))
+    this%qac = -99._sp
   END SUBROUTINE RESPONSEDT_REALLOCATE_QAC
 
   SUBROUTINE RESPONSEDT_COPY(this, this_copy)
@@ -2734,7 +2731,6 @@ END MODULE MWD_PARAMETERS_DIFF
 !%          ``log_prior_flag``       Return flag of log_prior
 !%          ``log_h``                Log_h value
 !%          ``log_h_flag``           Return flag of log_h
-!%          ``q_domain_kind``        Return q on the domain for computing the gradient
 !%          ======================== =======================================
 !%
 !%      Subroutine
@@ -2753,7 +2749,6 @@ MODULE MWD_RETURNS_DIFF
   USE MWD_RR_STATES_DIFF
   IMPLICIT NONE
 !$F90W index-array
-!$F90W char
   TYPE RETURNSDT
       INTEGER :: nmts
       LOGICAL, DIMENSION(:), ALLOCATABLE :: mask_time_step
@@ -2777,8 +2772,9 @@ MODULE MWD_RETURNS_DIFF
       LOGICAL :: log_h_flag=.false.
       REAL(sp), DIMENSION(:, :, :, :), ALLOCATABLE :: internal_fluxes
       LOGICAL :: internal_fluxes_flag=.false.
-      CHARACTER(len=lchar) :: q_domain_kind='...'
-      LOGICAL :: q_domain_kind_flag=.false.
+      LOGICAL :: q_domain_kind_q_flag=.false.
+      LOGICAL :: q_domain_kind_qt_flag=.false.
+      LOGICAL :: grad_q_domain_flag=.false.
   END TYPE RETURNSDT
 
 CONTAINS
@@ -2833,8 +2829,12 @@ CONTAINS
         this%internal_fluxes_flag = .true.
         ALLOCATE(this%internal_fluxes(mesh%nrow, mesh%ncol, this%nmts, &
 &       setup%n_internal_fluxes))
-      CASE ('q_domain_kind') 
-        this%q_domain_kind_flag = .true.
+      CASE ('q_domain_kind_q') 
+        this%q_domain_kind_q_flag = .true.
+      CASE ('q_domain_kind_qt') 
+        this%q_domain_kind_qt_flag = .true.
+      CASE ('grad_q_domain') 
+        this%grad_q_domain_flag = .true.
       END SELECT
     END DO
   END SUBROUTINE RETURNSDT_INITIALISE
@@ -25899,14 +25899,14 @@ CONTAINS
       output%response%q(i, time_step) = checkpoint_variable%ac_qz(k, &
 &       setup%nqz)
     END DO
-    IF (returns%q_domain_kind_flag) THEN
-      IF (returns%q_domain_kind .EQ. 'qt') THEN
+    IF (returns%grad_q_domain_flag) THEN
+      IF (returns%q_domain_kind_qt_flag) THEN
         DO i=1,mesh%nac
           output_d%response%qac(i, time_step) = checkpoint_variable_d%&
 &           ac_qtz(i, setup%nqz)
         END DO
       END IF
-      IF (returns%q_domain_kind .EQ. 'q') THEN
+      IF (returns%q_domain_kind_q_flag) THEN
         DO i=1,mesh%nac
           output_d%response%qac(i, time_step) = checkpoint_variable_d%&
 &           ac_qz(i, setup%nqz)
@@ -25942,13 +25942,13 @@ CONTAINS
       k = mesh%rowcol_to_ind_ac(mesh%gauge_pos(i, 1), mesh%gauge_pos(i, &
 &       2))
     END DO
-    IF (returns%q_domain_kind_flag) THEN
-      IF (returns%q_domain_kind .EQ. 'qt') THEN
+    IF (returns%grad_q_domain_flag) THEN
+      IF (returns%q_domain_kind_qt_flag) THEN
         CALL PUSHCONTROL1B(0)
       ELSE
         CALL PUSHCONTROL1B(1)
       END IF
-      IF (returns%q_domain_kind .EQ. 'q') THEN
+      IF (returns%q_domain_kind_q_flag) THEN
         DO i=mesh%nac,1,-1
           checkpoint_variable_b%ac_qz(i, setup%nqz) = &
 &           checkpoint_variable_b%ac_qz(i, setup%nqz) + output_b%&
@@ -25991,14 +25991,14 @@ CONTAINS
       output%response%q(i, time_step) = checkpoint_variable%ac_qz(k, &
 &       setup%nqz)
     END DO
-    IF (returns%q_domain_kind_flag) THEN
-      IF (returns%q_domain_kind .EQ. 'qt') THEN
+    IF (returns%grad_q_domain_flag) THEN
+      IF (returns%q_domain_kind_qt_flag) THEN
         DO i=1,mesh%nac
           output%response%qac(i, time_step) = checkpoint_variable%ac_qtz&
 &           (i, setup%nqz)
         END DO
       END IF
-      IF (returns%q_domain_kind .EQ. 'q') THEN
+      IF (returns%q_domain_kind_q_flag) THEN
         DO i=1,mesh%nac
           output%response%qac(i, time_step) = checkpoint_variable%ac_qz(&
 &           i, setup%nqz)

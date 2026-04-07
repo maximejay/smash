@@ -2803,14 +2803,6 @@ class Model:
 
         args = _standardize_forward_run_args(self, *args_options)
 
-        # Move this in _forward_run ?
-        if "q_domain_kind" in return_options:
-            self.response.reallocate_qac(
-                self.setup,
-                self.mesh,
-                return_options["q_domain_kind"],
-            )
-
         return _forward_run(self, *args)
 
     @_model_optimize_doc_substitution
@@ -2960,11 +2952,12 @@ class Model:
             None,
         )
 
-        self.response.reallocate_qac(
-            self.setup,
-            self.mesh,
-            return_options["q_domain_kind"],
-        )
+        if grad_mode in ["q", "qt"]:
+            self.response.reallocate_qac(
+                self.setup,
+                self.mesh,
+            )
+
         grad = _backward_run(self, grad_mode, *args)
 
         return grad

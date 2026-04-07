@@ -1137,7 +1137,9 @@ DEFAULT_SIMULATION_RETURN_OPTIONS = {
         "internal_fluxes": False,
         "cost": False,
         "jobs": False,
-        "q_domain_kind": "None",
+        "q_domain_kind_q": False,
+        "q_domain_kind_qt": False,
+        "grad_q_domain": False,
     },
     "optimize": {
         "time_step": "all",
@@ -1152,7 +1154,9 @@ DEFAULT_SIMULATION_RETURN_OPTIONS = {
         "jobs": False,
         "jreg": False,
         "lcurve_wjreg": False,
-        "q_domain_kind": "None",
+        "q_domain_kind_q": False,
+        "q_domain_kind_qt": False,
+        "grad_q_domain": False,
     },
     "bayesian_optimize": {
         "time_step": "all",

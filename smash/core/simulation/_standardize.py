@@ -1018,13 +1018,23 @@ def _standardize_simulation_return_options_bool(key: str, value: bool) -> bool:
     return value
 
 
-def _standardize_simulation_return_options_q_domain_kind(q_domain_kind: str):
-    if not isinstance(q_domain_kind, str):
-        raise ValueError(f"q_domain_kind `{q_domain_kind}` must be a str")
+def _standardize_simulation_return_options_q_domain_flags(return_options):
+    if return_options["q_domain"]:
+        if return_options["q_domain_kind_q"] is True and return_options["q_domain_kind_qt"] is True:
+            raise ValueError(
+                "Return options `q_domain_kind_q` and `q_domain_kind_qt` are both True."
+                " Set either one to False."
+            )
 
-    if q_domain_kind not in ["None", "q", "qt"]:
-        raise ValueError(f"Unknown value {q_domain_kind} for q_domain_kind. Choice are ['None','q','qt']")
-    return q_domain_kind
+        if return_options["q_domain_kind_q"] is False and return_options["q_domain_kind_qt"] is False:
+            warnings.warn(
+                "Both return_options `q_domain_kind_q` and `q_domain_kind_qt` are False,"
+                " ignoring `q_domain_kind_q=False` and assuming it to `True`.",
+                stacklevel=2,
+            )
+            return_options["q_domain_kind_q"] = True
+
+    return return_options
 
 
 def _standardize_simulation_return_options_time_step(
@@ -1102,10 +1112,10 @@ def _standardize_simulation_return_options(model: Model, func_name: str, return_
         return_options.setdefault(key, value)
         if key == "time_step":
             return_options[key] = _standardize_simulation_return_options_time_step(model, return_options[key])
-        elif key == "q_domain_kind":
-            return_options[key] = _standardize_simulation_return_options_q_domain_kind(return_options[key])
         else:
             _standardize_simulation_return_options_bool(key, return_options[key])
+
+    _standardize_simulation_return_options_q_domain_flags(return_options)
 
     return return_options
 
@@ -1348,7 +1358,6 @@ def _standardize_simulation_return_options_finalize(model: Model, return_options
             "nmts",
             "mask_time_step",
             "time_step_to_returns_time_step",
-            "q_domain_kind",
             "time_step",
             "fkeys",
             "keys",

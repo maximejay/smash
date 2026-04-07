@@ -54,20 +54,17 @@ contains
 
     end subroutine ResponseDT_initialise
 
-    subroutine ResponseDT_reallocate_qac(this, setup, mesh, q_domain_kind)
+    subroutine ResponseDT_reallocate_qac(this, setup, mesh)
 
         implicit none
 
         type(ResponseDT), intent(inout) :: this
         type(SetupDT), intent(in) :: setup
         type(MeshDT), intent(in) :: mesh
-        character(lchar) :: q_domain_kind
 
-        if (q_domain_kind .eq. "q" .or. q_domain_kind .eq. "qt") then
-            deallocate (this%qac)
-            allocate (this%qac(mesh%nac, setup%ntime_step))
-            this%qac = -99._sp
-        end if
+        deallocate (this%qac)
+        allocate (this%qac(mesh%nac, setup%ntime_step))
+        this%qac = -99._sp
 
     end subroutine ResponseDT_reallocate_qac
 
